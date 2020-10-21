@@ -3,62 +3,63 @@ package signalduino
 import (
 	"bufio"
 	"fmt"
-	"github.com/jacobsa/go-serial/serial"
 	"github.com/sirupsen/logrus"
+	"go.bug.st/serial"
 	"io"
+	"time"
 )
 
 type Signalduino struct {
-	port io.ReadWriteCloser
+	port serial.Port
 }
 
-func Open() (*Signalduino, error) {
-	options := serial.OpenOptions{
-		PortName:              "COM3",
-		BaudRate:              57600,
-		DataBits:              8,
-		StopBits:              1,
-		MinimumReadSize:       0,
-		InterCharacterTimeout: 10,
-		ParityMode:            serial.PARITY_NONE,
-		RTSCTSFlowControl:     true,
-		Rs485RxDuringTx:       true,
+func Open(devicePort string) (*Signalduino, error) {
+	mode := &serial.Mode{
+		BaudRate: 57600,
+		Parity:   serial.NoParity,
+		DataBits: 8,
+		StopBits: serial.OneStopBit,
 	}
 
 	// Open the port.
-	port, err := serial.Open(options)
+	port, err := serial.Open(devicePort, mode)
 	if err != nil {
 		return nil, fmt.Errorf("serial.Open: %v", err)
 	}
 
+	if err := port.SetDTR(true); err != nil {
+		return nil, fmt.Errorf("error setting dtr: %v", err)
+	}
+
 	s := &Signalduino{port: port}
-	//go s.logReads()
+	s.logReads()
 
 	return s, nil
 }
 
 func (s *Signalduino) logReads() {
-	logrus.Info("reading from signalduino...")
+	logrus.Info("start reading from signalduino...")
 	reader := bufio.NewReader(s.port)
-	for {
-		line, _, err := reader.ReadLine()
-		if err != nil {
-			if err != io.EOF {
-				logrus.Errorf("Error reading from serial port: ", err)
+	go func() {
+		for {
+			line, _, err := reader.ReadLine()
+			if err != nil {
+				if err != io.EOF {
+					logrus.Errorf("Error reading from serial port: ", err)
+				}
 			}
+			logrus.Infof("Rx: %s", string(line))
 		}
-		logrus.Infof("Rx: %s", string(line))
-	}
+	}()
+	time.Sleep(time.Second * 2)
 }
 
 func (s *Signalduino) Version() {
-	b := []byte{80, 10}
-	n, err := s.port.Write(b)
-	if err != nil {
-		logrus.Errorf("port.Write: %v", err)
-	}
+	s.Send("V")
+}
 
-	logrus.Infof("Wrote %d bytes.", n)
+func (s *Signalduino) Ping() {
+	s.Send("P")
 }
 
 func (s *Signalduino) Close() error {
@@ -68,9 +69,8 @@ func (s *Signalduino) Close() error {
 func (s *Signalduino) Send(cmd string) {
 	cmd = cmd + "\n"
 	b := []byte(cmd)
-	n, err := s.port.Write(b)
+	_, err := s.port.Write(b)
 	if err != nil {
 		logrus.Errorf("port.Write: %v", err)
 	}
-	logrus.Infof("Wrote %d bytes.", n)
 }

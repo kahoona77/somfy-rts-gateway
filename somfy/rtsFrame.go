@@ -1,6 +1,8 @@
 package somfy
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+)
 
 func GetFrame(device *Device, btn Button) []byte {
 	data := make([]byte, 7)
@@ -9,8 +11,8 @@ func GetFrame(device *Device, btn Button) []byte {
 
 	rollingCode := make([]byte, 2)
 	binary.LittleEndian.PutUint16(rollingCode, device.RollingCode)
-	data[2] = rollingCode[0]
-	data[3] = rollingCode[1]
+	data[2] = rollingCode[1]
+	data[3] = rollingCode[0]
 
 	address := make([]byte, 4)
 	binary.LittleEndian.PutUint32(address, device.Address)

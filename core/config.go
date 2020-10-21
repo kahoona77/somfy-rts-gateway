@@ -6,10 +6,10 @@ import (
 
 //AppConfig the Emerald config
 type AppConfig struct {
-	Port         string
-	BasePath     string
-	DbFile       string
-	BuildVersion string
+	Port               string
+	BasePath           string
+	DevicesFile        string
+	SignalduinoAddress string
 }
 
 //LoadConfiguration loads the configuration file
@@ -23,12 +23,17 @@ func LoadConfiguration() AppConfig {
 
 	conf.BasePath = os.Getenv("BASE_PATH")
 	if conf.BasePath == "" {
-		conf.BasePath = "/emerald"
+		conf.BasePath = "/somfy"
 	}
 
-	conf.DbFile = os.Getenv("DB_FILE")
-	if conf.DbFile == "" {
-		conf.DbFile = "emerald.db"
+	conf.DevicesFile = os.Getenv("DEVICES_CONFIG")
+	if conf.DevicesFile == "" {
+		conf.DevicesFile = "somfy.yaml"
+	}
+
+	conf.SignalduinoAddress = os.Getenv("SIGNALDUINO_ADDRESS")
+	if conf.SignalduinoAddress == "" {
+		conf.SignalduinoAddress = "COM3"
 	}
 
 	return conf

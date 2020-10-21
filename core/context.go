@@ -15,14 +15,8 @@ func CreateCtx(ctx *Ctx) echo.MiddlewareFunc {
 }
 
 type Ctx struct {
-	AppConfig *AppConfig
-}
-
-func (ctx *Ctx) Copy() *Ctx {
-	return &Ctx{}
-}
-
-func (ctx *Ctx) Close() {
+	Config         *AppConfig
+	CommandChannel chan DeviceCmd
 }
 
 type WebContext struct {
@@ -33,4 +27,9 @@ type WebContext struct {
 func (ctx *WebContext) ParamAsInt(name string) int {
 	p, _ := strconv.Atoi(ctx.Param(name))
 	return p
+}
+
+type DeviceCmd struct {
+	Device string
+	Cmd    string
 }
