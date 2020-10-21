@@ -1,0 +1,17 @@
+POST http://localhost:8080/somfy/o3/up
+###
+
+POST http://localhost:8080/somfy/o3/down
+###
+
+POST http://localhost:8080/somfy/o3/my
+###
+
+POST http://localhost:8080/somfy/o4/up
+###
+
+POST http://localhost:8080/somfy/o4/down
+###
+
+POST http://localhost:8080/somfy/o4/my
+###

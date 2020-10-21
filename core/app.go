@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-func InitApp(buildVersion string) *Ctx {
+func InitApp() *Ctx {
 	formatter := &logrus.TextFormatter{}
 	formatter.ForceColors = true
 	formatter.FullTimestamp = true
@@ -13,12 +13,11 @@ func InitApp(buildVersion string) *Ctx {
 	logrus.SetFormatter(formatter)
 	logrus.SetOutput(os.Stdout)
 	logrus.SetLevel(logrus.InfoLevel)
-	logrus.Infof("emerald-build-version is '%s'", buildVersion)
 
 	conf := LoadConfiguration()
-	conf.BuildVersion = buildVersion
 
-	ctx := &Ctx{AppConfig: &conf}
+	cmdChan := make(chan DeviceCmd, 50)
+	ctx := &Ctx{Config: &conf, CommandChannel: cmdChan}
 
 	return ctx
 }
