@@ -2,10 +2,6 @@ stages:
   - build
   - build-image
 
-cache:
-  paths:
-    - node_modules/
-
 build-binary:
   image: golang:1.15
   stage: build
