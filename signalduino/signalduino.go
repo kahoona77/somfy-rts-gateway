@@ -3,32 +3,32 @@ package signalduino
 import (
 	"bufio"
 	"fmt"
+	"github.com/jacobsa/go-serial/serial"
 	"github.com/sirupsen/logrus"
-	"go.bug.st/serial"
 	"io"
 	"time"
 )
 
 type Signalduino struct {
-	port serial.Port
+	port io.ReadWriteCloser
 }
 
 func Open(devicePort string) (*Signalduino, error) {
-	mode := &serial.Mode{
-		BaudRate: 57600,
-		Parity:   serial.NoParity,
-		DataBits: 8,
-		StopBits: serial.OneStopBit,
+	options := serial.OpenOptions{
+		PortName:              devicePort,
+		BaudRate:              57600,
+		DataBits:              8,
+		StopBits:              1,
+		ParityMode:            0,
+		RTSCTSFlowControl:     true,
+		InterCharacterTimeout: 0,
+		MinimumReadSize:       4,
 	}
 
 	// Open the port.
-	port, err := serial.Open(devicePort, mode)
+	port, err := serial.Open(options)
 	if err != nil {
 		return nil, fmt.Errorf("serial.Open: %v", err)
-	}
-
-	if err := port.SetDTR(true); err != nil {
-		return nil, fmt.Errorf("error setting dtr: %v", err)
 	}
 
 	s := &Signalduino{port: port}
@@ -48,17 +48,21 @@ func (s *Signalduino) logReads() {
 					logrus.Errorf("Error reading from serial port: ", err)
 				}
 			}
-			logrus.Infof("Rx: %s", string(line))
+			if len(line) > 0 {
+				logrus.Infof("Rx: %s", string(line))
+			}
 		}
 	}()
 	time.Sleep(time.Second * 2)
 }
 
 func (s *Signalduino) Version() {
+	logrus.Infof("SEND V (Version)")
 	s.Send("V")
 }
 
 func (s *Signalduino) Ping() {
+	logrus.Infof("SEND P (Ping)")
 	s.Send("P")
 }
 

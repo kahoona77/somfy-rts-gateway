@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM iron/base
 WORKDIR /app
 # copy binary into image
 COPY somfy-rts-gateway /app/

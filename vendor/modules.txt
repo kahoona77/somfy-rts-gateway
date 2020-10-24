@@ -1,11 +1,10 @@
 # github.com/asdine/storm v2.1.2+incompatible
 ## explicit
-# github.com/creack/goselect v0.1.1
-github.com/creack/goselect
 # github.com/dgrijalva/jwt-go v3.2.0+incompatible
 github.com/dgrijalva/jwt-go
 # github.com/jacobsa/go-serial v0.0.0-20180131005756-15cf729a72d4
 ## explicit
+github.com/jacobsa/go-serial/serial
 # github.com/labstack/echo/v4 v4.1.17
 ## explicit
 github.com/labstack/echo/v4
@@ -28,8 +27,6 @@ github.com/valyala/bytebufferpool
 github.com/valyala/fasttemplate
 # go.bug.st/serial v1.1.1
 ## explicit
-go.bug.st/serial
-go.bug.st/serial/unixutils
 # go.etcd.io/bbolt v1.3.5
 ## explicit
 # golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a

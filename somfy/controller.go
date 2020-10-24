@@ -58,6 +58,11 @@ func loadDevices(file string) ([]*Device, error) {
 
 func (c *Controller) listen(queue chan core.DeviceCmd) {
 	for dc := range queue {
+		if dc.Cmd == "ping" {
+			c.sig.Ping()
+			continue
+		}
+
 		btn, err := getButtonFromCommand(dc.Cmd)
 		if err != nil {
 			logrus.Warnf("error: %v", err)
