@@ -1,0 +1,28 @@
+stages:
+  - build
+  - build-image
+
+cache:
+  paths:
+    - node_modules/
+
+build-binary:
+  image: golang:1.15
+  stage: build
+  script:
+    - GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -mod=vendor -o somfy-rts-gateway
+  artifacts:
+    paths:
+    - somfy-rts-gateway
+
+build-image:
+  stage: build-image
+  image: docker:latest
+  services:
+    - docker:dind
+  variables:
+    IMAGE_PATH: kahoona/somfy-rts-gateway:latest
+  script:
+    - docker login -u $DOCKER_HUB_USER -p $DOCKER_HUB_PASSWORD
+    - docker build -t $IMAGE_PATH .
+    - docker push $IMAGE_PATH
