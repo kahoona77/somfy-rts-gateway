@@ -6,6 +6,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"somfyRtsGateway/signalduino"
 	"strings"
+	"time"
 )
 
 type Device struct {
@@ -30,4 +31,6 @@ func (d *Device) Send(sig *signalduino.Signalduino, btn Button) {
 		repetition, strings.ToUpper(hex.EncodeToString(frame)))
 	logrus.Infof("SEND: %s", cmd)
 	sig.Send(cmd)
+	// wait a bit so that the command is processed
+	time.Sleep(time.Millisecond * 500)
 }
