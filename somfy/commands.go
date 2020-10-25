@@ -9,15 +9,20 @@ const ButtonUp = 0x2
 const ButtonDown = 0x4
 const ButtonProg = 0x8
 
+const CmdMy = "my"
+const CmdUp = "up"
+const CmdDown = "down"
+const CmdProg = "prog"
+
 func getButtonFromCommand(cmd string) (Button, error) {
 	switch cmd {
-	case "up":
+	case CmdUp:
 		return ButtonUp, nil
-	case "down":
+	case CmdDown:
 		return ButtonDown, nil
-	case "my":
+	case CmdMy:
 		return ButtonMy, nil
-	case "prog":
+	case CmdProg:
 		return ButtonProg, nil
 	}
 	return ButtonMy, fmt.Errorf("could not map command %s", cmd)

@@ -4,6 +4,7 @@ import (
 	"github.com/brutella/hc/accessory"
 	"github.com/brutella/hc/service"
 	"github.com/sirupsen/logrus"
+	"somfyRtsGateway/core"
 	"somfyRtsGateway/somfy"
 )
 
@@ -11,7 +12,7 @@ type Cover struct {
 	*accessory.Accessory
 	WindowCovering *service.WindowCovering
 	device         *somfy.Device
-	ctrl           *somfy.Controller
+	cmdChan        chan core.DeviceCmd
 }
 
 func (c *Cover) OnPositionStateUpdate(pos int) {
@@ -20,15 +21,19 @@ func (c *Cover) OnPositionStateUpdate(pos int) {
 
 func (c *Cover) OnTargetPositionUpdate(pos int) {
 	logrus.Infof("client changed target-position of %s to %d", c.device.Id, pos)
+	cmd := somfy.CmdMy
 	switch pos {
 	case 0:
-		c.ctrl.SendCmd(c.device.Id, somfy.ButtonDown)
+		cmd = somfy.CmdDown
 		break
 	case 100:
-		c.ctrl.SendCmd(c.device.Id, somfy.ButtonUp)
+		cmd = somfy.CmdUp
 		break
-	default:
-		c.ctrl.SendCmd(c.device.Id, somfy.ButtonMy)
+	}
+
+	c.cmdChan <- core.DeviceCmd{
+		Device: c.device.Id,
+		Cmd:    cmd,
 	}
 	c.WindowCovering.CurrentPosition.SetValue(pos)
 }
@@ -38,8 +43,8 @@ func (c *Cover) OnCurrentPositionUpdate(pos int) {
 }
 
 // NewWindow returns a window which implements model.NewWindow.
-func NewWindowCovering(device *somfy.Device, ctrl *somfy.Controller) *Cover {
-	cover := Cover{device: device, ctrl: ctrl}
+func NewWindowCovering(device *somfy.Device, ctx *core.Ctx) *Cover {
+	cover := Cover{device: device, cmdChan: ctx.CommandChannel}
 	cover.Accessory = accessory.New(accessory.Info{
 		Name:         device.Name,
 		Manufacturer: "Somfy",
