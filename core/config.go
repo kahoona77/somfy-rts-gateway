@@ -10,6 +10,9 @@ type AppConfig struct {
 	BasePath           string
 	DevicesFile        string
 	SignalduinoAddress string
+	HomekitConfigPath  string
+	HomekitPort        string
+	HomekitPin         string
 }
 
 //LoadConfiguration loads the configuration file
@@ -34,6 +37,21 @@ func LoadConfiguration() AppConfig {
 	conf.SignalduinoAddress = os.Getenv("SIGNALDUINO_ADDRESS")
 	if conf.SignalduinoAddress == "" {
 		conf.SignalduinoAddress = "COM3"
+	}
+
+	conf.HomekitConfigPath = os.Getenv("HOMEKIT_CONFIG_PATH")
+	if conf.HomekitConfigPath == "" {
+		conf.HomekitConfigPath = "./db"
+	}
+
+	conf.HomekitPort = os.Getenv("HOMEKIT_CONFIG_PORT")
+	if conf.HomekitPort == "" {
+		conf.HomekitPort = "99123"
+	}
+
+	conf.HomekitPin = os.Getenv("HOMEKIT_CONFIG_PIN")
+	if conf.HomekitPin == "" {
+		conf.HomekitPin = "12344321"
 	}
 
 	return conf

@@ -1,10 +1,10 @@
 POST http://kahoona-ion:9070/somfy/any/ping
 ###
 
-POST http://kahoona-ion:9070/somfy/o3/up
+POST http://kahoona-ion:9070/somfy/o1/up
 ###
 
-POST http://kahoona-ion:9070/somfy/o3/down
+POST http://kahoona-ion:9070/somfy/o1/down
 ###
 
 POST http://kahoona-ion:9070/somfy/o3/my

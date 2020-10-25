@@ -9,6 +9,7 @@ import (
 )
 
 type Device struct {
+	Id            string
 	Name          string
 	Address       uint32
 	RollingCode   uint16

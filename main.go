@@ -7,6 +7,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"somfyRtsGateway/api"
 	"somfyRtsGateway/core"
+	"somfyRtsGateway/homekit"
 	"somfyRtsGateway/somfy"
 )
 
@@ -18,6 +19,8 @@ func main() {
 		logrus.Errorf("error creating somfy-controller: %v", err)
 	}
 	defer ctrl.Close()
+
+	homekit.StartHomeKitBridge(ctx.Config.HomekitConfigPath, ctrl)
 
 	e := echo.New()
 	e.Debug = true

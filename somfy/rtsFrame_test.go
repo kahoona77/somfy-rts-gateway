@@ -12,6 +12,7 @@ func TestGetFrame(t *testing.T) {
 		RollingCode:   172,
 		Address:       3,
 		EncryptionKey: 173,
+		Id:            "Oben3",
 		Name:          "Oben3",
 	}
 

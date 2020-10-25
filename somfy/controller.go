@@ -99,7 +99,7 @@ func (c *Controller) save() error {
 
 func (c *Controller) SendCmd(device string, btn Button) {
 	for _, d := range c.devices {
-		if d.Name == device {
+		if d.Id == device {
 			d.Send(c.sig, btn)
 			if err := c.save(); err != nil {
 				logrus.Errorf("error saving device-config: %v", err)
@@ -107,5 +107,9 @@ func (c *Controller) SendCmd(device string, btn Button) {
 			return
 		}
 	}
-	logrus.Warnf("did not find device with name %s", device)
+	logrus.Warnf("did not find device with id %s", device)
+}
+
+func (c *Controller) GetDevices() []*Device {
+	return c.devices
 }
