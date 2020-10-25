@@ -55,7 +55,7 @@ func NewWindowCovering(device *somfy.Device, ctrl *somfy.Controller) *Covers {
 	})
 
 	acc.WindowCovering.TargetPosition.OnValueRemoteUpdate(func(pos int) {
-		logrus.Info("Client changed target-position to %d", pos)
+		logrus.Info("Client changed target-position of device %s to %d", device.Id, pos)
 		switch pos {
 		case 0:
 			ctrl.SendCmd(device.Id, somfy.ButtonDown)
