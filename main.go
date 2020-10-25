@@ -20,7 +20,7 @@ func main() {
 	}
 	defer ctrl.Close()
 
-	homekit.StartHomeKitBridge(ctx.Config.HomekitConfigPath, ctrl)
+	homekit.StartHomeKitBridge(ctx.Config, ctrl)
 
 	e := echo.New()
 	e.Debug = true
