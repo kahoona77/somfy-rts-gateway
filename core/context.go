@@ -32,4 +32,5 @@ func (ctx *WebContext) ParamAsInt(name string) int {
 type DeviceCmd struct {
 	Device string
 	Cmd    string
+	Pos    int
 }

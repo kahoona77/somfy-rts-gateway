@@ -29,17 +29,24 @@ func (c *Cover) OnTargetPositionUpdate(pos int) {
 	case 100:
 		cmd = somfy.CmdUp
 		break
+	default:
+		cmd = somfy.CmdPosition
+		break
 	}
 
 	c.cmdChan <- core.DeviceCmd{
 		Device: c.device.Id,
 		Cmd:    cmd,
+		Pos:    pos,
 	}
-	c.WindowCovering.CurrentPosition.SetValue(pos)
 }
 
 func (c *Cover) OnCurrentPositionUpdate(pos int) {
 	logrus.Infof("client changed current-position of %s to %d", c.device.Id, pos)
+}
+
+func (c *Cover) OnDeviceUpdate(device *somfy.Device) {
+	c.WindowCovering.CurrentPosition.SetValue(device.Position)
 }
 
 // NewWindow returns a window which implements model.NewWindow.
@@ -53,6 +60,8 @@ func NewWindowCovering(device *somfy.Device, ctx *core.Ctx) *Cover {
 	}, accessory.TypeWindowCovering)
 	cover.WindowCovering = service.NewWindowCovering()
 	cover.AddService(cover.WindowCovering.Service)
+
+	device.OnUpdate(cover.OnDeviceUpdate)
 
 	cover.WindowCovering.PositionState.OnValueRemoteUpdate(cover.OnPositionStateUpdate)
 	cover.WindowCovering.TargetPosition.OnValueRemoteUpdate(cover.OnTargetPositionUpdate)

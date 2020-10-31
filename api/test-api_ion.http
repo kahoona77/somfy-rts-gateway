@@ -1,3 +1,10 @@
+### List
+GET http://kahoona-ion:9070/somfy/
+
+### Get Device
+GET http://kahoona-ion:9070/somfy/o3
+
+### Ping
 POST http://kahoona-ion:9070/somfy/any/ping
 ###
 

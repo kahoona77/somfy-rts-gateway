@@ -9,15 +9,98 @@ import (
 	"time"
 )
 
+type Button uint16
+
+const ButtonMy = 0x1
+const ButtonUp = 0x2
+const ButtonDown = 0x4
+const ButtonProg = 0x8
+
+const PosUp = 100
+const PosDown = 0
+
+type UpdateFunc func(d *Device)
+
 type Device struct {
-	Id            string `json:"id"`
-	Name          string `json:"name"`
-	Address       uint32 `json:"-"`
-	RollingCode   uint16 `json:"-"`
-	EncryptionKey byte   `json:"-"`
+	Id       string `json:"id"`
+	Name     string `json:"name"`
+	Position int    `json:"position"`
+
+	Address         uint32 `json:"-"`
+	RollingCode     uint16 `json:"-"`
+	EncryptionKey   byte   `json:"-"`
+	ClosingDuration int    `json:"-"`
+
+	updateFuncs []UpdateFunc
 }
 
-func (d *Device) Send(sig *signalduino.Signalduino, btn Button) {
+func (d *Device) Down(sig *signalduino.Signalduino) {
+	d.send(sig, ButtonUp)
+	d.Position = PosUp
+	d.update()
+}
+
+func (d *Device) Up(sig *signalduino.Signalduino) {
+	d.send(sig, ButtonDown)
+	d.Position = PosDown
+	d.update()
+}
+
+func (d *Device) My(sig *signalduino.Signalduino) {
+	d.send(sig, ButtonMy)
+	d.Position = 50
+	d.update()
+}
+
+func (d *Device) Prog(sig *signalduino.Signalduino) {
+	d.send(sig, ButtonProg)
+	d.Position = 50
+	d.update()
+}
+
+func (d *Device) SetPosition(sig *signalduino.Signalduino, pos int) {
+	if pos >= PosUp {
+		d.Up(sig)
+		return
+	}
+
+	if pos <= PosDown {
+		d.Down(sig)
+		return
+	}
+
+	if pos == d.Position {
+		return
+	}
+
+	delta := pos - d.Position
+	var button Button = ButtonUp
+	if delta < 0 {
+		button = ButtonDown
+		delta = delta * -1
+	}
+
+	duration := time.Duration(delta*(d.ClosingDuration/100)) * 1000
+	d.send(sig, button)
+	time.Sleep(time.Millisecond * duration)
+	d.send(sig, ButtonMy)
+
+	// set end Position
+	d.Position = pos
+	d.update()
+}
+
+func (d *Device) update() {
+	for _, fn := range d.updateFuncs {
+		fn(d)
+	}
+}
+
+func (d *Device) OnUpdate(fn UpdateFunc) {
+	d.updateFuncs = append(d.updateFuncs, fn)
+}
+
+func (d *Device) send(sig *signalduino.Signalduino, btn Button) {
 	//increase rollingCode
 	d.RollingCode += 1
 	d.EncryptionKey += 1

@@ -63,13 +63,7 @@ func (c *Controller) listen(queue chan core.DeviceCmd) {
 			continue
 		}
 
-		btn, err := getButtonFromCommand(dc.Cmd)
-		if err != nil {
-			logrus.Warnf("error: %v", err)
-			continue
-		}
-
-		c.SendCmd(dc.Device, btn)
+		c.SendCmd(dc)
 	}
 }
 
@@ -97,13 +91,33 @@ func (c *Controller) save() error {
 	return f.Close()
 }
 
-func (c *Controller) SendCmd(id string, btn Button) {
-	d, err := c.GetDevice(id)
+func (c *Controller) SendCmd(dc core.DeviceCmd) {
+	d, err := c.GetDevice(dc.Device)
 	if err != nil {
 		logrus.Warn(err)
 	}
 
-	d.Send(c.sig, btn)
+	switch dc.Cmd {
+	case CmdUp:
+		d.Up(c.sig)
+		break
+	case CmdDown:
+		d.Down(c.sig)
+		break
+	case CmdMy:
+		d.My(c.sig)
+		break
+	case CmdProg:
+		d.Prog(c.sig)
+		break
+	case CmdPosition:
+		d.SetPosition(c.sig, dc.Pos)
+		break
+	default:
+		logrus.Warnf("error unknown command: %s", dc.Cmd)
+		return
+	}
+
 	if err := c.save(); err != nil {
 		logrus.Errorf("error saving device-config: %v", err)
 	}
