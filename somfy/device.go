@@ -35,14 +35,14 @@ type Device struct {
 }
 
 func (d *Device) Down(sig *signalduino.Signalduino) {
-	d.send(sig, ButtonUp)
-	d.Position = PosUp
+	d.send(sig, ButtonDown)
+	d.Position = PosDown
 	d.update()
 }
 
 func (d *Device) Up(sig *signalduino.Signalduino) {
-	d.send(sig, ButtonDown)
-	d.Position = PosDown
+	d.send(sig, ButtonUp)
+	d.Position = PosUp
 	d.update()
 }
 

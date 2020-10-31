@@ -46,6 +46,7 @@ func (c *Cover) OnCurrentPositionUpdate(pos int) {
 }
 
 func (c *Cover) OnDeviceUpdate(device *somfy.Device) {
+	logrus.Infof("device update %s - %s to %d", c.device.Id, device.Id, device.Position)
 	c.WindowCovering.CurrentPosition.SetValue(device.Position)
 }
 
