@@ -5,7 +5,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/sirupsen/logrus"
-	"somfyRtsGateway/api"
 	"somfyRtsGateway/core"
 	"somfyRtsGateway/homekit"
 	"somfyRtsGateway/somfy"
@@ -30,7 +29,9 @@ func main() {
 	e.Use(core.CreateCtx(ctx))
 
 	root := e.Group(ctx.Config.BasePath)
-	root.POST("/:device/:cmd", api.SomfyCmd)
+	root.GET("/", somfy.ListDevices(ctrl))
+	root.GET("/:device", somfy.GetDevice(ctrl))
+	root.POST("/:device/:cmd", somfy.Cmd)
 
 	//
 	//d.Send(s, somfy.ButtonUp)

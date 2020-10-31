@@ -10,11 +10,11 @@ import (
 )
 
 type Device struct {
-	Id            string
-	Name          string
-	Address       uint32
-	RollingCode   uint16
-	EncryptionKey byte
+	Id            string `json:"id"`
+	Name          string `json:"name"`
+	Address       uint32 `json:"-"`
+	RollingCode   uint16 `json:"-"`
+	EncryptionKey byte   `json:"-"`
 }
 
 func (d *Device) Send(sig *signalduino.Signalduino, btn Button) {
@@ -32,5 +32,5 @@ func (d *Device) Send(sig *signalduino.Signalduino, btn Button) {
 	logrus.Infof("SEND: %s", cmd)
 	sig.Send(cmd)
 	// wait a bit so that the command is processed
-	time.Sleep(time.Millisecond * 500)
+	time.Sleep(time.Millisecond * 1000)
 }
