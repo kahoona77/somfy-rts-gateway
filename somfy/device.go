@@ -81,9 +81,9 @@ func (d *Device) SetPosition(sig *signalduino.Signalduino, pos int) {
 		delta = delta * -1
 	}
 
-	duration := time.Duration(delta*(d.ClosingDuration/100)) * 1000
+	duration := d.calcDuration(delta)
 
-	logrus.Infof("[Device %s] setPos: from %s to %d => delta: %d; direction: %d; duration: %d", d.Id, d.Position, pos, delta, button, duration)
+	logrus.Infof("[Device %s] setPos: from %d to %d => delta: %d; direction: %d; duration: %d", d.Id, d.Position, pos, delta, button, duration)
 
 	d.send(sig, button)
 	logrus.Infof("before sleep")
@@ -94,6 +94,10 @@ func (d *Device) SetPosition(sig *signalduino.Signalduino, pos int) {
 	// set end Position
 	d.Position = pos
 	d.update()
+}
+
+func (d *Device) calcDuration(delta int) time.Duration {
+	return time.Duration(float32(delta)*(float32(d.ClosingDuration)/float32(100))) * 1000
 }
 
 func (d *Device) update() {
