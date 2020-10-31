@@ -68,5 +68,7 @@ func NewWindowCovering(device *somfy.Device, ctx *core.Ctx) *Cover {
 	cover.WindowCovering.TargetPosition.OnValueRemoteUpdate(cover.OnTargetPositionUpdate)
 	cover.WindowCovering.CurrentPosition.OnValueRemoteUpdate(cover.OnCurrentPositionUpdate)
 
+	cover.WindowCovering.CurrentPosition.SetValue(device.Position)
+
 	return &cover
 }
