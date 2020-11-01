@@ -6,7 +6,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"somfyRtsGateway/core"
 	"somfyRtsGateway/somfy"
-	"time"
 )
 
 type Cover struct {
@@ -18,10 +17,6 @@ type Cover struct {
 
 func (c *Cover) OnPositionStateUpdate(pos int) {
 	logrus.Infof("client changed position-state of %s to %d", c.device.Id, pos)
-}
-
-func (c *Cover) OnTargetPositionUpdate(pos int) {
-	logrus.Infof("client changed target-position of %s to %d", c.device.Id, pos)
 	cmd := somfy.CmdMy
 	switch pos {
 	case 0:
@@ -40,6 +35,10 @@ func (c *Cover) OnTargetPositionUpdate(pos int) {
 		Cmd:    cmd,
 		Pos:    pos,
 	}
+}
+
+func (c *Cover) OnTargetPositionUpdate(pos int) {
+	logrus.Infof("client changed target-position of %s to %d", c.device.Id, pos)
 }
 
 func (c *Cover) OnCurrentPositionUpdate(pos int) {
@@ -65,12 +64,8 @@ func NewWindowCovering(device *somfy.Device, ctx *core.Ctx) *Cover {
 
 	device.OnUpdate(cover.OnDeviceUpdate)
 
-	debounced := core.Debounce(500 * time.Millisecond)
-
 	cover.WindowCovering.PositionState.OnValueRemoteUpdate(cover.OnPositionStateUpdate)
-	cover.WindowCovering.TargetPosition.OnValueRemoteUpdate(func(pos int) {
-		debounced(func() { cover.OnPositionStateUpdate(pos) })
-	})
+	cover.WindowCovering.TargetPosition.OnValueRemoteUpdate(cover.OnPositionStateUpdate)
 	cover.WindowCovering.CurrentPosition.OnValueRemoteUpdate(cover.OnCurrentPositionUpdate)
 
 	cover.WindowCovering.CurrentPosition.SetValue(device.Position)
