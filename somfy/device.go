@@ -85,11 +85,15 @@ func (d *Device) SetPosition(sig *signalduino.Signalduino, pos int) {
 
 	logrus.Infof("[Device %s] setPos: from %d to %d => delta: %d; direction: %d; duration: %d", d.Id, d.Position, pos, delta, button, duration)
 
-	d.send(sig, button)
-	logrus.Infof("before sleep")
-	time.Sleep(time.Millisecond * duration)
-	logrus.Infof("after sleep")
-	d.send(sig, ButtonMy)
+	if duration > 1500 {
+		d.send(sig, button)
+		logrus.Infof("before sleep")
+		time.Sleep(time.Millisecond * duration)
+		logrus.Infof("after sleep")
+		d.send(sig, ButtonMy)
+	} else {
+		logrus.Info("position-change to small -> doing nothing")
+	}
 
 	// set end Position
 	d.Position = pos

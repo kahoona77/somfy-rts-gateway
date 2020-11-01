@@ -6,6 +6,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"somfyRtsGateway/core"
 	"somfyRtsGateway/somfy"
+	"time"
 )
 
 type Cover struct {
@@ -64,8 +65,12 @@ func NewWindowCovering(device *somfy.Device, ctx *core.Ctx) *Cover {
 
 	device.OnUpdate(cover.OnDeviceUpdate)
 
+	debounced := core.Debounce(500 * time.Millisecond)
+
 	cover.WindowCovering.PositionState.OnValueRemoteUpdate(cover.OnPositionStateUpdate)
-	cover.WindowCovering.TargetPosition.OnValueRemoteUpdate(cover.OnTargetPositionUpdate)
+	cover.WindowCovering.TargetPosition.OnValueRemoteUpdate(func(pos int) {
+		debounced(func() { cover.OnPositionStateUpdate(pos) })
+	})
 	cover.WindowCovering.CurrentPosition.OnValueRemoteUpdate(cover.OnCurrentPositionUpdate)
 
 	cover.WindowCovering.CurrentPosition.SetValue(device.Position)
