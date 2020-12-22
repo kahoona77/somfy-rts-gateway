@@ -2,29 +2,20 @@
 GET http://kahoona-ion:9070/somfy/
 
 ### Get Device
-GET http://kahoona-ion:9070/somfy/o3
+GET http://kahoona-ion:9070/somfy/u1
 
 ### Ping
 POST http://kahoona-ion:9070/somfy/any/ping
 ###
 
-POST http://kahoona-ion:9070/somfy/o1/up
+POST http://kahoona-ion:9070/somfy/o4/up
 ###
 
-POST http://kahoona-ion:9070/somfy/o1/down
+POST http://kahoona-ion:9070/somfy/o4/down
 ###
 
-POST http://kahoona-ion:9070/somfy/o3/my
+POST http://kahoona-ion:9070/somfy/o4/my
 ###
 
-POST http://kahoona-ion:9070/somfy/o6/prog
-###
-
-POST http://kahoona-ion:9070/somfy/o6/up
-###
-
-POST http://kahoona-ion:9070/somfy/o6/down
-###
-
-POST http://kahoona-ion:9070/somfy/o6/my
+POST http://kahoona-ion:9070/somfy/o4/prog
 ###

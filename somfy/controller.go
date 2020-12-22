@@ -17,6 +17,18 @@ type Controller struct {
 	devicesFile string
 }
 
+func (c *Controller) Signalduino() *signalduino.Signalduino {
+	return c.sig
+}
+
+func (c *Controller) Devices() []core.Device {
+	devices := make([]core.Device, len(c.devices))
+	for i, device := range c.devices {
+		devices[i] = device
+	}
+	return devices
+}
+
 func NewController(ctx *core.Ctx) (*Controller, error) {
 	s, err := signalduino.Open(ctx.Config.SignalduinoAddress)
 	if err != nil {

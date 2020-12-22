@@ -1,0 +1,34 @@
+{{ define "content"}}
+<div class="header">Somfy RTS Gateway</div>
+<div class="home">
+    {{ range .Devices }}
+    <div onclick="window.location.href = 'servers/{{.Id}}'" class="device card">
+        <div>
+            <div>{{.Name}} ({{.Id}})</div>
+        </div>
+
+        <div class="buttons">
+            <form id="up-{{.Id}}" action="web/{{.Id}}/up" method="post" hidden></form>
+            <button class="btn primary" type="submit" form="up-{{.Id}}" onclick="event.stopPropagation();">
+               up
+            </button>
+
+            <form id="down-{{.Id}}" action="web/{{.Id}}/down" method="post" hidden></form>
+            <button class="btn primary" type="submit" form="down-{{.Id}}" onclick="event.stopPropagation();">
+                down
+            </button>
+
+            <form id="stop-{{.Id}}" action="web/{{.Id}}/my" method="post" hidden></form>
+            <button class="btn primary" type="submit" form="stop-{{.Id}}" onclick="event.stopPropagation();">
+                stop
+            </button>
+
+            <form id="prog-{{.Id}}" action="web/{{.Id}}/prog" method="post" hidden></form>
+            <button class="btn primary" type="submit" form="prog-{{.Id}}" onclick="event.stopPropagation();">
+                prog
+            </button>
+        </div>
+    </div>
+    {{end}}
+</div>
+{{end}}

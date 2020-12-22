@@ -8,6 +8,8 @@ import (
 	"somfyRtsGateway/core"
 	"somfyRtsGateway/homekit"
 	"somfyRtsGateway/somfy"
+	"somfyRtsGateway/web"
+	"somfyRtsGateway/web/views"
 )
 
 func main() {
@@ -18,10 +20,12 @@ func main() {
 		logrus.Errorf("error creating somfy-controller: %v", err)
 	}
 	defer ctrl.Close()
+	ctx.Controller = ctrl
 
 	homekit.StartHomeKitBridge(ctx, ctrl)
 
 	e := echo.New()
+	e.Renderer = web.NewTemplate(ctx)
 	e.Debug = true
 	//e.Logger.SetLevel(log.DEBUG)
 	//e.Use(middleware.Logger())
@@ -33,8 +37,9 @@ func main() {
 	root.GET("/:device", somfy.GetDevice(ctrl))
 	root.POST("/:device/:cmd", somfy.Cmd)
 
-	//
-	//d.Send(s, somfy.ButtonUp)
+	root.Static("/static", "./web/static")
+	root.GET("/web", views.Index)
+	root.POST("/web/:device/:cmd", views.Cmd)
 
 	// Listen and server on 0.0.0.0:8080
 	logrus.Infof("listening on :%s/%s", ctx.Config.Port, ctx.Config.BasePath)

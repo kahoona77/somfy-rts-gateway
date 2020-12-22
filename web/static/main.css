@@ -1,0 +1,98 @@
+:root {
+
+    --black:        hsl(0, 0%, 4%);
+    --black-bis:    hsl(0, 0%, 7%);
+    --black-ter:    hsl(0, 0%, 14%);
+
+    --grey-darker:  hsl(0, 0%, 21%);
+    --grey-dark:    hsl(0, 0%, 29%);
+    --grey:         hsl(0, 0%, 48%);
+    --grey-light:   hsl(0, 0%, 71%);
+    --grey-lighter: hsl(0, 0%, 86%);
+
+    --white-ter:    hsl(0, 0%, 96%);
+    --white-bis:    hsl(0, 0%, 98%);
+    --white:        hsl(0, 0%, 100%);
+
+    --orange:       hsl(14,  100%, 53%);
+    --yellow:       hsl(48,  100%, 67%);
+    --green:        hsl(141, 71%,  48%);
+    --turquoise:    hsl(171, 100%, 41%);
+    --cyan:         hsl(204, 86%,  53%);
+    --blue:         hsl(217, 71%,  53%);
+    --purple:       hsl(271, 100%, 71%);
+    --red:          hsl(348, 100%, 61%);
+
+    --primary: var(--blue);
+
+}
+
+body {
+    font-family: 'Lexend Deca', sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    color:var(--grey-dark);
+    margin: 0;
+    padding: 0;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+h1, h2, h3, h4 {
+    text-transform: uppercase;
+}
+
+a {
+    text-decoration: none;
+    cursor: pointer;
+}
+
+button {
+    background: none;
+    border: none;
+}
+
+.btn {
+    border: var(--primary) solid 1px;
+    color:  var(--primary);
+    background-color:  var(--white);
+    border-radius: 20px;
+    margin: .2rem;
+    padding: .1rem .5rem;
+    font-size: .8rem;
+}
+.btn.primary {
+    background-color:  var(--primary);
+    color:  var(--white);
+}
+
+.card {
+    display: block;
+    position: relative;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+    transition: all 0.3s cubic-bezier(.25,.8,.25,1);
+}
+
+.header {
+    text-align: center;
+    margin: 1rem auto;
+    font-size: 2rem;
+}
+
+.home {
+    margin: 0 auto;
+    max-width: 800px;
+}
+
+.device {
+    margin: .5rem 0;
+    padding: 0.5rem;
+    display: flex;
+}
+
+.device .buttons {
+    text-align: right;
+    flex-grow: 1;
+}

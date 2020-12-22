@@ -1,3 +1,6 @@
+POST http://localhost:8080/somfy/any/ping
+###
+
 POST http://localhost:8080/somfy/o3/up
 ###
 

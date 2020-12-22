@@ -17,6 +17,7 @@ func CreateCtx(ctx *Ctx) echo.MiddlewareFunc {
 type Ctx struct {
 	Config         *AppConfig
 	CommandChannel chan DeviceCmd
+	Controller     Controller
 }
 
 type WebContext struct {

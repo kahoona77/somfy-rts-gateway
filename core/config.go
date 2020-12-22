@@ -1,6 +1,7 @@
 package core
 
 import (
+	"fmt"
 	"os"
 )
 
@@ -13,6 +14,10 @@ type AppConfig struct {
 	HomekitConfigPath  string
 	HomekitPort        string
 	HomekitPin         string
+}
+
+func (c *AppConfig) AbsolutePath(path string) string {
+	return fmt.Sprintf("%s/%s", c.BasePath, path)
 }
 
 //LoadConfiguration loads the configuration file
@@ -46,7 +51,7 @@ func LoadConfiguration() AppConfig {
 
 	conf.HomekitPort = os.Getenv("HOMEKIT_CONFIG_PORT")
 	if conf.HomekitPort == "" {
-		conf.HomekitPort = "99123"
+		conf.HomekitPort = "9123"
 	}
 
 	conf.HomekitPin = os.Getenv("HOMEKIT_CONFIG_PIN")

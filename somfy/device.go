@@ -34,6 +34,34 @@ type Device struct {
 	updateFuncs []UpdateFunc
 }
 
+func (d *Device) GetId() string {
+	return d.Id
+}
+
+func (d *Device) GetName() string {
+	return d.Name
+}
+
+func (d *Device) GetPosition() int {
+	return d.Position
+}
+
+func (d *Device) GetAddress() uint32 {
+	return d.Address
+}
+
+func (d *Device) GetRollingCode() uint16 {
+	return d.RollingCode
+}
+
+func (d *Device) GetEncryptionKey() byte {
+	return d.EncryptionKey
+}
+
+func (d *Device) GetClosingDuration() int {
+	return d.ClosingDuration
+}
+
 func (d *Device) Down(sig *signalduino.Signalduino) {
 	d.send(sig, ButtonDown)
 	d.Position = PosDown
