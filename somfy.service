@@ -1,0 +1,14 @@
+[Unit]
+Description=Somfy RTS Gateway
+After=network.target
+
+[Service]
+ExecStart=/opt/somfy/start.sh
+WorkingDirectory=/opt/somfy/
+StandardOutput=inherit
+StandardError=inherit
+Restart=always
+User=pi
+
+[Install]
+WantedBy=multi-user.target
