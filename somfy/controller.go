@@ -52,6 +52,7 @@ func NewController(ctx *core.Ctx) (*Controller, error) {
 }
 
 func (c *Controller) Close() {
+	logrus.Debugf("closing controller...")
 	if err := c.sig.Close(); err != nil {
 		logrus.Errorf("error closing signalduino: %v", err)
 	}

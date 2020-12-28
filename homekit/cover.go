@@ -2,6 +2,7 @@ package homekit
 
 import (
 	"github.com/brutella/hc/accessory"
+	"github.com/brutella/hc/characteristic"
 	"github.com/brutella/hc/service"
 	"github.com/sirupsen/logrus"
 	"somfyRtsGateway/core"
@@ -17,6 +18,10 @@ type Cover struct {
 
 func (c *Cover) OnPositionStateUpdate(pos int) {
 	logrus.Infof("client changed position-state of %s to %d", c.device.Id, pos)
+}
+
+func (c *Cover) OnTargetPositionUpdate(pos int) {
+	logrus.Infof("client changed target-position of %s to %d", c.device.Id, pos)
 	cmd := somfy.CmdMy
 	switch pos {
 	case 0:
@@ -37,10 +42,6 @@ func (c *Cover) OnPositionStateUpdate(pos int) {
 	}
 }
 
-func (c *Cover) OnTargetPositionUpdate(pos int) {
-	logrus.Infof("client changed target-position of %s to %d", c.device.Id, pos)
-}
-
 func (c *Cover) OnCurrentPositionUpdate(pos int) {
 	logrus.Infof("client changed current-position of %s to %d", c.device.Id, pos)
 }
@@ -57,18 +58,20 @@ func NewWindowCovering(device *somfy.Device, ctx *core.Ctx) *Cover {
 		Name:         device.Name,
 		Manufacturer: "Somfy",
 		Model:        "Cover",
-		ID:           uint64(device.Address),
+		ID:           100 + uint64(device.Address), // make sure it is higher than the bridge
 	}, accessory.TypeWindowCovering)
 	cover.WindowCovering = service.NewWindowCovering()
-	cover.AddService(cover.WindowCovering.Service)
+	cover.WindowCovering.PositionState.Value = characteristic.PositionStateStopped
+	cover.WindowCovering.CurrentPosition.Value = device.Position
+	cover.WindowCovering.TargetPosition.Value = device.Position
 
 	device.OnUpdate(cover.OnDeviceUpdate)
 
 	cover.WindowCovering.PositionState.OnValueRemoteUpdate(cover.OnPositionStateUpdate)
-	cover.WindowCovering.TargetPosition.OnValueRemoteUpdate(cover.OnPositionStateUpdate)
+	cover.WindowCovering.TargetPosition.OnValueRemoteUpdate(cover.OnTargetPositionUpdate)
 	cover.WindowCovering.CurrentPosition.OnValueRemoteUpdate(cover.OnCurrentPositionUpdate)
 
-	cover.WindowCovering.CurrentPosition.SetValue(device.Position)
+	cover.AddService(cover.WindowCovering.Service)
 
 	return &cover
 }

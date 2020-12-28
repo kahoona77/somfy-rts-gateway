@@ -51,7 +51,7 @@ func LoadConfiguration() AppConfig {
 
 	conf.HomekitPort = os.Getenv("HOMEKIT_CONFIG_PORT")
 	if conf.HomekitPort == "" {
-		conf.HomekitPort = "9123"
+		conf.HomekitPort = "19123"
 	}
 
 	conf.HomekitPin = os.Getenv("HOMEKIT_CONFIG_PIN")

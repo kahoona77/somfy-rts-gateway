@@ -1,15 +1,19 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/sirupsen/logrus"
+	"os"
+	"os/signal"
 	"somfyRtsGateway/core"
 	"somfyRtsGateway/homekit"
 	"somfyRtsGateway/somfy"
 	"somfyRtsGateway/web"
 	"somfyRtsGateway/web/views"
+	"time"
 )
 
 func main() {
@@ -41,7 +45,22 @@ func main() {
 	root.GET("/web", views.Index)
 	root.POST("/web/:device/:cmd", views.Cmd)
 
-	// Listen and server on 0.0.0.0:8080
-	logrus.Infof("listening on :%s/%s", ctx.Config.Port, ctx.Config.BasePath)
-	e.Logger.Fatal(e.Start(fmt.Sprintf(":%s", ctx.Config.Port)))
+	// Start server
+	go func() {
+		logrus.Infof("listening on :%s/%s", ctx.Config.Port, ctx.Config.BasePath)
+		if err := e.Start(fmt.Sprintf(":%s", ctx.Config.Port)); err != nil {
+			logrus.Info("shutting down...")
+		}
+	}()
+
+	// Wait for interrupt signal to gracefully shutdown the server with a timeout of 10 seconds.
+	// Use a buffered channel to avoid missing signals as recommended for signal.Notify
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt)
+	<-quit
+	cancelCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := e.Shutdown(cancelCtx); err != nil {
+		e.Logger.Fatal(err)
+	}
 }

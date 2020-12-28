@@ -3,13 +3,15 @@ package homekit
 import (
 	"github.com/brutella/hc"
 	"github.com/brutella/hc/accessory"
+	"github.com/brutella/hc/log"
 	"github.com/sirupsen/logrus"
 	"somfyRtsGateway/core"
 	"somfyRtsGateway/somfy"
 )
 
 func StartHomeKitBridge(ctx *core.Ctx, ctrl *somfy.Controller) {
-	bridge := accessory.NewBridge(accessory.Info{Name: "Somfy-RTS-Bridge", ID: 700001})
+	log.Debug.Enable()
+	bridge := accessory.NewBridge(accessory.Info{Name: "SOMFY-RTS-BRIDGE", ID: 1})
 
 	accessories := make([]*accessory.Accessory, len(ctrl.GetDevices()))
 	for i, device := range ctrl.GetDevices() {
@@ -28,5 +30,5 @@ func StartHomeKitBridge(ctx *core.Ctx, ctrl *somfy.Controller) {
 	})
 
 	go t.Start()
-	logrus.Infof("started home-kit bridge")
+	logrus.Info("started home-kit bridge")
 }

@@ -12,7 +12,7 @@ func InitApp() *Ctx {
 	formatter.TimestampFormat = "2006-01-02 15:04:05"
 	logrus.SetFormatter(formatter)
 	logrus.SetOutput(os.Stdout)
-	logrus.SetLevel(logrus.InfoLevel)
+	logrus.SetLevel(logrus.DebugLevel)
 
 	conf := LoadConfiguration()
 
