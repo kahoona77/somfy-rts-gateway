@@ -22,12 +22,16 @@ jobs:
       run: GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -mod=vendor -v -o somfy-rts-gateway
     - name: Test
       run: go test -mod=vendor -v ./...
+    - name: Build
+      run: GOOS=linux GOARCH=arm GOARM=5 CGO_ENABLED=0 go build -mod=vendor -v -o somfy-rts-gateway-arm
     - name: Upload artifacts
       uses: actions/upload-artifact@v2
       with:
         name: gobin
-        path: somfy-rts-gateway
-      
+        path: |
+          somfy-rts-gateway
+          somfy-rts-gateway-arm
+
   push_to_registry:
     name: Push Docker image to Docker Hub
     needs: build
@@ -53,4 +57,52 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: kahoona/somfy-rts-gateway:latest
+
+  release:
+    name: Release somfy-rts-gateway
+    if: github.event_name == 'push' &&  contains(github.ref, '/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Download artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: gobin
+      - name: zip linux amd64
+        run: |
+          zip --junk-paths somfy-rts-gateway-linux-amd64.zip web/tmpl web/static/ somfy-rts-gateway
+      - name: zip linux arm
+        run: |
+          zip somfy-rts-gateway-linux-arm.zip  web/tmpl web/static/ somfy-rts-gateway-arm
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./somfy-rts-gateway-linux-amd64.zip
+          asset_name: somfy-rts-gateway-linux-amd64.zip
+          asset_content_type: application/zip
+      - name: Upload Release Asset Arm
+        id: upload-release-asset-arm
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./somfy-rts-gateway-linux-arm.zip
+          asset_name: somfy-rts-gateway-linux-arm.zip
+          asset_content_type: application/zip
  
