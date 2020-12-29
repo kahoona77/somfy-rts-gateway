@@ -1,0 +1,28 @@
+name: Go
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Set up Go 1.x
+      uses: actions/setup-go@v2
+      with:
+        go-version: ^1.15
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+
+    - name: Build
+      run: GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -mod=vendor -v -o somfy-rts-gateway
+
+    - name: Test
+      run: go test -mod=vendor -v ./...
