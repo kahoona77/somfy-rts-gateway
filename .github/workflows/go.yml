@@ -33,12 +33,12 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
       - name: Download artifacts
         uses: actions/download-artifact@v2
         with:
           name: gobin
-      - name: Check out the repo
-        uses: actions/checkout@v2
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
       - name: Login to DockerHub
