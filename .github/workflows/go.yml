@@ -19,14 +19,14 @@ jobs:
     - name: Test
       run: go test -mod=vendor -v ./...
     - name: Build linux arm
-      run: GOOS=linux GOARCH=arm GOARM=5 CGO_ENABLED=0 go build -mod=vendor -v -o somfy-rts-gateway-arm
+      run: GOOS=linux GOARCH=arm GOARM=5 CGO_ENABLED=0 go build -mod=vendor -v -o ./arm/somfy-rts-gateway
     - name: Upload artifacts
       uses: actions/upload-artifact@v2
       with:
         name: gobin
         path: |
           somfy-rts-gateway
-          somfy-rts-gateway-arm
+          ./arm/somfy-rts-gateway
 
   push_to_registry:
     name: Push Docker image to Docker Hub
@@ -68,10 +68,10 @@ jobs:
           name: gobin
       - name: zip linux amd64
         run: |
-          zip --junk-paths somfy-rts-gateway-linux-amd64.zip web/tmpl web/static/ somfy-rts-gateway
+          zip somfy-rts-gateway-linux-amd64.zip web/tmpl/* web/static/* README.md start.sh somfy.service somfy-rts-gateway
       - name: zip linux arm
         run: |
-          zip somfy-rts-gateway-linux-arm.zip  web/tmpl web/static/ somfy-rts-gateway-arm
+          zip somfy-rts-gateway-linux-arm.zip  web/tmpl/* web/static/* README.md start.sh somfy.service ./arm/somfy-rts-gateway
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
@@ -80,6 +80,7 @@ jobs:
         with:
           tag_name: ${{ github.ref }}
           release_name: Release ${{ github.ref }}
+          body_path: ./README.md
           draft: false
           prerelease: false
       - name: Upload Release Asset
