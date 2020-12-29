@@ -45,7 +45,7 @@ func (s *Signalduino) logReads() {
 			line, _, err := reader.ReadLine()
 			if err != nil {
 				if err != io.EOF {
-					logrus.Errorf("Error reading from serial port: ", err)
+					logrus.Errorf("Error reading from serial port: %v", err)
 				}
 			}
 			if len(line) > 0 {
