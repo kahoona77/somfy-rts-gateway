@@ -18,11 +18,11 @@ jobs:
         go-version: ^1.15
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
-    - name: Build
+    - name: Build linux amd64
       run: GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -mod=vendor -v -o somfy-rts-gateway
     - name: Test
       run: go test -mod=vendor -v ./...
-    - name: Build
+    - name: Build linux arm
       run: GOOS=linux GOARCH=arm GOARM=5 CGO_ENABLED=0 go build -mod=vendor -v -o somfy-rts-gateway-arm
     - name: Upload artifacts
       uses: actions/upload-artifact@v2
@@ -61,6 +61,7 @@ jobs:
   release:
     name: Release somfy-rts-gateway
     if: github.event_name == 'push' &&  contains(github.ref, '/tags/v')
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
