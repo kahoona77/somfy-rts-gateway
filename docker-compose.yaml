@@ -1,0 +1,17 @@
+version: '2.1'
+services:
+  app:
+    image: kahoona/somfy-rts-gateway:latest
+    network_mode: "host"
+    environment:
+      - BASE_PATH=/somfy
+      - PORT=9070
+      - DEVICES_CONFIG=/data/somfy.yaml
+      - SIGNALDUINO_ADDRESS=/dev/ttyUSB0
+      - HOMEKIT_CONFIG_PATH=/data/homekit
+      - HOMEKIT_CONFIG_PORT=40123
+      - HOMEKIT_CONFIG_PIN=12344321
+    volumes:
+      - /Users/bernst/Documents/Privat/somfy-rts-gateway:/data
+    devices:
+      - /dev/tty.usbserial-1410:/dev/ttyUSB0
