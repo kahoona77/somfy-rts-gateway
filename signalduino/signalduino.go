@@ -20,7 +20,7 @@ func Open(devicePort string) (*Signalduino, error) {
 		DataBits:              8,
 		StopBits:              1,
 		ParityMode:            0,
-		RTSCTSFlowControl:     true,
+		RTSCTSFlowControl:     false,
 		InterCharacterTimeout: 0,
 		MinimumReadSize:       4,
 	}
