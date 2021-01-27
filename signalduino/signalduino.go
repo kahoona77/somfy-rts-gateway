@@ -71,6 +71,7 @@ func (s *Signalduino) Close() error {
 }
 
 func (s *Signalduino) Send(cmd string) {
+	logrus.Infof("SEND cmd: %s", cmd)
 	cmd = cmd + "\n"
 	b := []byte(cmd)
 	_, err := s.port.Write(b)
