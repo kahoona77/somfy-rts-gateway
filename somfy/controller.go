@@ -32,7 +32,7 @@ func (c *Controller) Devices() []core.Device {
 func NewController(ctx *core.Ctx) (*Controller, error) {
 	s, err := signalduino.Open(ctx.Config.SignalduinoAddress)
 	if err != nil {
-		return nil, fmt.Errorf("error opening signalduino: %v", err)
+		return nil, fmt.Errorf("error opening signalduino on address '%s': %v", ctx.Config.SignalduinoAddress, err)
 	}
 	s.Version()
 

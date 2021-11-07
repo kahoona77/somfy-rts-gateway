@@ -85,12 +85,7 @@ func NSEC(rr dns.RR, srv Service, iface *net.Interface) *dns.NSEC {
 		}
 	case *dns.SRV:
 		types := []uint16{}
-		var ips []net.IP
-		if iface != nil {
-			ips = srv.IPsAtInterface(iface)
-		} else {
-			ips = srv.IPs
-		}
+		ips := srv.IPsAtInterface(iface)
 		if includesIPv4(ips) {
 			types = append(types, dns.TypeA)
 		}
@@ -118,12 +113,7 @@ func NSEC(rr dns.RR, srv Service, iface *net.Interface) *dns.NSEC {
 }
 
 func A(srv Service, iface *net.Interface) []*dns.A {
-	var ips []net.IP
-	if iface != nil {
-		ips = srv.IPsAtInterface(iface)
-	} else {
-		ips = srv.IPs
-	}
+	ips := srv.IPsAtInterface(iface)
 
 	var as []*dns.A
 	for _, ip := range ips {
@@ -145,12 +135,7 @@ func A(srv Service, iface *net.Interface) []*dns.A {
 }
 
 func AAAA(srv Service, iface *net.Interface) []*dns.AAAA {
-	var ips []net.IP
-	if iface != nil {
-		ips = srv.IPsAtInterface(iface)
-	} else {
-		ips = srv.IPs
-	}
+	ips := srv.IPsAtInterface(iface)
 
 	var aaaas []*dns.AAAA
 	for _, ip := range ips {
@@ -169,6 +154,25 @@ func AAAA(srv Service, iface *net.Interface) []*dns.AAAA {
 	}
 
 	return aaaas
+}
+
+func splitRecords(records []dns.RR) (as []*dns.A, aaaas []*dns.AAAA, srvs []*dns.SRV) {
+	for _, record := range records {
+		switch rr := record.(type) {
+		case *dns.A:
+			if rr.A.To4() != nil {
+				as = append(as, rr)
+			}
+
+		case *dns.AAAA:
+			if rr.AAAA.To16() != nil {
+				aaaas = append(aaaas, rr)
+			}
+		case *dns.SRV:
+			srvs = append(srvs, rr)
+		}
+	}
+	return
 }
 
 // Returns true if ips contains IPv4 addresses.

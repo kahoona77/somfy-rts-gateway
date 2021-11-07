@@ -1,10 +1,12 @@
 package dnssd
 
 import (
-	"github.com/miekg/dns"
+	"net"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/miekg/dns"
 )
 
 type Cache struct {
@@ -17,13 +19,20 @@ func NewCache() *Cache {
 	}
 }
 
+func (c *Cache) Services() []*Service {
+	tmp := []*Service{}
+	for _, s := range c.services {
+		tmp = append(tmp, s)
+	}
+	return tmp
+}
+
 // UpdateFrom updates the cache from resource records in msg.
 // TODO consider the cache-flush bit to make records as to be deleted in one second
-func (c *Cache) UpdateFrom(msg *dns.Msg) (adds []*Service, rmvs []*Service) {
-	answers := allRecords(msg)
+func (c *Cache) UpdateFrom(msg *dns.Msg, iface *net.Interface) (adds []*Service, rmvs []*Service) {
+	answers := filterRecords(msg, nil)
 	sort.Sort(byType(answers))
 
-loop:
 	for _, answer := range answers {
 		switch rr := answer.(type) {
 		case *dns.PTR:
@@ -68,25 +77,14 @@ loop:
 		case *dns.A:
 			for _, entry := range c.services {
 				if entry.Hostname() == rr.Hdr.Name {
-					for _, ip := range entry.IPs {
-						if ip.Equal(rr.A) {
-							continue loop
-						}
-					}
-					entry.IPs = append(entry.IPs, rr.A)
+					entry.addIP(rr.A, iface)
 				}
 			}
 
 		case *dns.AAAA:
 			for _, entry := range c.services {
 				if entry.Hostname() == rr.Hdr.Name {
-					for _, ip := range entry.IPs {
-						if ip.Equal(rr.AAAA) {
-							continue loop
-						}
-					}
-
-					entry.IPs = append(entry.IPs, rr.AAAA)
+					entry.addIP(rr.AAAA, iface)
 				}
 			}
 
@@ -94,21 +92,18 @@ loop:
 			if entry, ok := c.services[rr.Hdr.Name]; ok {
 				text := make(map[string]string)
 				for _, txt := range rr.Txt {
-					var pairs = strings.Split(txt, " ")
-					for _, pair := range pairs {
-						elems := strings.SplitN(pair, "=", 2)
-						if len(elems) == 2 {
-							key := elems[0]
-							value := elems[1]
+					elems := strings.SplitN(txt, "=", 2)
+					if len(elems) == 2 {
+						key := elems[0]
+						value := elems[1]
 
-							// Don't override existing keys
-							// TODO make txt records case insensitive
-							if _, ok := text[key]; !ok {
-								text[key] = value
-							}
-
+						// Don't override existing keys
+						// TODO make txt records case insensitive
+						if _, ok := text[key]; !ok {
 							text[key] = value
 						}
+
+						text[key] = value
 					}
 				}
 
@@ -159,11 +154,34 @@ func (a byType) Less(i, j int) bool {
 	return false
 }
 
-func allRecords(m *dns.Msg) []dns.RR {
-	var answ []dns.RR
-	answ = append(answ, m.Answer...)
-	answ = append(answ, m.Ns...)
-	answ = append(answ, m.Extra...)
+func filterRecords(m *dns.Msg, service *Service) []dns.RR {
+	var all []dns.RR
+	all = append(all, m.Answer...)
+	all = append(all, m.Ns...)
+	all = append(all, m.Extra...)
 
-	return answ
+	if service == nil {
+		return all
+	}
+
+	var answers []dns.RR
+	for _, answer := range all {
+		switch rr := answer.(type) {
+		case *dns.SRV:
+			if rr.Hdr.Name != service.ServiceInstanceName() {
+				continue
+			}
+		case *dns.A:
+			if service.Hostname() != rr.Hdr.Name {
+				continue
+			}
+		case *dns.AAAA:
+			if service.Hostname() != rr.Hdr.Name {
+				continue
+			}
+		}
+		answers = append(answers, answer)
+	}
+
+	return answers
 }
