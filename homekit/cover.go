@@ -54,7 +54,6 @@ func (c *Cover) OnDeviceUpdate(device *somfy.Device) {
 
 // NewWindow returns a window which implements model.NewWindow.
 func NewWindowCovering(device *somfy.Device, ctx *core.Ctx) *Cover {
-	//ID:           100 + uint64(device.Address), // make sure it is higher than the bridge
 	cover := Cover{device: device, cmdChan: ctx.CommandChannel}
 	cover.A = accessory.New(accessory.Info{
 		Name:         device.Name,
@@ -62,6 +61,8 @@ func NewWindowCovering(device *somfy.Device, ctx *core.Ctx) *Cover {
 		Model:        "Cover",
 		Firmware:     "somfy-rts-gateway",
 	}, accessory.TypeWindowCovering)
+	cover.A.Id = 100 + uint64(device.Address) // make sure it is higher than the bridge
+
 	cover.WindowCovering = service.NewWindowCovering()
 	cover.WindowCovering.PositionState.SetValue(characteristic.PositionStateStopped)
 	cover.WindowCovering.CurrentPosition.SetValue(device.Position)
