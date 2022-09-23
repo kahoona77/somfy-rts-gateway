@@ -1,34 +1,59 @@
 package homekit
 
 import (
-	"github.com/brutella/hc"
-	"github.com/brutella/hc/accessory"
-	"github.com/brutella/hc/log"
-	"github.com/sirupsen/logrus"
+	"context"
+	"fmt"
+	"os"
+	"os/signal"
 	"somfyRtsGateway/core"
 	"somfyRtsGateway/somfy"
+	"syscall"
+
+	"github.com/brutella/hap"
+	"github.com/brutella/hap/accessory"
+	"github.com/brutella/hap/log"
+	"github.com/sirupsen/logrus"
 )
 
 func StartHomeKitBridge(ctx *core.Ctx, ctrl *somfy.Controller) {
 	log.Debug.Enable()
-	bridge := accessory.NewBridge(accessory.Info{Name: "SOMFY-RTS-BRIDGE", ID: 1})
+	bridge := accessory.NewBridge(accessory.Info{Name: "SOMFY-RTS-BRIDGE"})
+	bridge.A.Id = 1
 
-	accessories := make([]*accessory.Accessory, len(ctrl.GetDevices()))
+	accessories := make([]*accessory.A, len(ctrl.GetDevices()))
 	for i, device := range ctrl.GetDevices() {
 		cover := NewWindowCovering(device, ctx)
-		accessories[i] = cover.Accessory
+		accessories[i] = cover.A
 	}
 
-	config := hc.Config{Pin: ctx.Config.HomekitPin, Port: ctx.Config.HomekitPort, StoragePath: ctx.Config.HomekitConfigPath}
-	t, err := hc.NewIPTransport(config, bridge.Accessory, accessories...)
+	// Store the data in the "./db" directory.
+	fs := hap.NewFsStore(ctx.Config.HomekitConfigPath)
+
+	// Create the hap server.
+	server, err := hap.NewServer(fs, bridge.A, accessories...)
 	if err != nil {
-		logrus.Errorf("error creating home-kit transport")
+		logrus.Errorf("error creating home-kit server")
 	}
+	server.Pin = ctx.Config.HomekitPin
+	server.Addr = fmt.Sprintf(":%s", ctx.Config.HomekitPort)
 
-	hc.OnTermination(func() {
-		<-t.Stop()
-	})
+	// Setup a listener for interrupts and SIGTERM signals
+	// to stop the server.
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt)
+	signal.Notify(c, syscall.SIGTERM)
 
-	go t.Start()
+	hapCtx, cancel := context.WithCancel(context.Background())
+	go func() {
+		<-c
+		// Stop delivering signals.
+		signal.Stop(c)
+		// Cancel the context to stop the server.
+		cancel()
+	}()
+
+	// Run the server.
+	go server.ListenAndServe(hapCtx)
+
 	logrus.Info("started home-kit bridge")
 }

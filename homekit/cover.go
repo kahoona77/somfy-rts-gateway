@@ -1,16 +1,17 @@
 package homekit
 
 import (
-	"github.com/brutella/hc/accessory"
-	"github.com/brutella/hc/characteristic"
-	"github.com/brutella/hc/service"
-	"github.com/sirupsen/logrus"
 	"somfyRtsGateway/core"
 	"somfyRtsGateway/somfy"
+
+	"github.com/brutella/hap/accessory"
+	"github.com/brutella/hap/characteristic"
+	"github.com/brutella/hap/service"
+	"github.com/sirupsen/logrus"
 )
 
 type Cover struct {
-	*accessory.Accessory
+	*accessory.A
 	WindowCovering *service.WindowCovering
 	device         *somfy.Device
 	cmdChan        chan core.DeviceCmd
@@ -53,17 +54,18 @@ func (c *Cover) OnDeviceUpdate(device *somfy.Device) {
 
 // NewWindow returns a window which implements model.NewWindow.
 func NewWindowCovering(device *somfy.Device, ctx *core.Ctx) *Cover {
+	//ID:           100 + uint64(device.Address), // make sure it is higher than the bridge
 	cover := Cover{device: device, cmdChan: ctx.CommandChannel}
-	cover.Accessory = accessory.New(accessory.Info{
+	cover.A = accessory.New(accessory.Info{
 		Name:         device.Name,
 		Manufacturer: "Somfy",
 		Model:        "Cover",
-		ID:           100 + uint64(device.Address), // make sure it is higher than the bridge
+		Firmware:     "somfy-rts-gateway",
 	}, accessory.TypeWindowCovering)
 	cover.WindowCovering = service.NewWindowCovering()
-	cover.WindowCovering.PositionState.Value = characteristic.PositionStateStopped
-	cover.WindowCovering.CurrentPosition.Value = device.Position
-	cover.WindowCovering.TargetPosition.Value = device.Position
+	cover.WindowCovering.PositionState.SetValue(characteristic.PositionStateStopped)
+	cover.WindowCovering.CurrentPosition.SetValue(device.Position)
+	cover.WindowCovering.TargetPosition.SetValue(device.Position)
 
 	device.OnUpdate(cover.OnDeviceUpdate)
 
@@ -71,7 +73,7 @@ func NewWindowCovering(device *somfy.Device, ctx *core.Ctx) *Cover {
 	cover.WindowCovering.TargetPosition.OnValueRemoteUpdate(cover.OnTargetPositionUpdate)
 	cover.WindowCovering.CurrentPosition.OnValueRemoteUpdate(cover.OnCurrentPositionUpdate)
 
-	cover.AddService(cover.WindowCovering.Service)
+	cover.AddS(cover.WindowCovering.S)
 
 	return &cover
 }
