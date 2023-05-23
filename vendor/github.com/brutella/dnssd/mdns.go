@@ -63,6 +63,14 @@ func (r Request) String() string {
 	return fmt.Sprintf("%s@%s\n%v", r.from.IP, r.IfaceName(), r.msg)
 }
 
+func (r Request) Raw() *dns.Msg {
+	return r.msg
+}
+
+func (r Request) From() *net.UDPAddr {
+	return r.from
+}
+
 // IfaceName returns the name of the network interface where the request was received.
 // If the network interface is unknown, the string "?" is returned.
 func (r Request) IfaceName() string {
@@ -123,7 +131,6 @@ func (c *mdnsConn) Drain(ctx context.Context) {
 		select {
 		case req := <-c.Read(ctx):
 			log.Debug.Println("Ignoring msg from", req.from.IP)
-			break
 		default:
 			return
 		}
@@ -134,7 +141,7 @@ func (c *mdnsConn) Close() {
 	c.close()
 }
 
-func newMDNSConn() (*mdnsConn, error) {
+func newMDNSConn(ifs ...string) (*mdnsConn, error) {
 	var errs []error
 	var connIPv4 *ipv4.PacketConn
 	var connIPv6 *ipv6.PacketConn
@@ -147,9 +154,11 @@ func newMDNSConn() (*mdnsConn, error) {
 			log.Debug.Printf("IPv4 interface socket opt: %v", err)
 		}
 		// Enable multicast loopback to send and receive data from lo0
-		connIPv4.SetMulticastLoopback(true)
+		if err := connIPv4.SetMulticastLoopback(true); err != nil {
+			log.Debug.Println("IPv4 set multicast loopback:", err)
+		}
 
-		for _, iface := range multicastInterfaces() {
+		for _, iface := range MulticastInterfaces(ifs...) {
 			if err := connIPv4.JoinGroup(iface, &net.UDPAddr{IP: IPv4LinkLocalMulticast}); err != nil {
 				log.Debug.Printf("Failed joining IPv4 %v: %v", iface.Name, err)
 			} else {
@@ -166,9 +175,11 @@ func newMDNSConn() (*mdnsConn, error) {
 			log.Debug.Printf("IPv6 interface socket opt: %v", err)
 		}
 		// Enable multicast loopback to send and receive data from lo0
-		connIPv6.SetMulticastLoopback(true)
+		if err := connIPv6.SetMulticastLoopback(true); err != nil {
+			log.Debug.Println("IPv6 set multicast loopback:", err)
+		}
 
-		for _, iface := range multicastInterfaces() {
+		for _, iface := range MulticastInterfaces(ifs...) {
 			if err := connIPv6.JoinGroup(iface, &net.UDPAddr{IP: IPv6LinkLocalMulticast}); err != nil {
 				log.Debug.Printf("Failed joining IPv6 %v: %v", iface.Name, err)
 			} else {

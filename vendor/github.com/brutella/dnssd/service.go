@@ -105,14 +105,14 @@ func NewService(cfg Config) (s Service, err error) {
 	}
 
 	ips := []net.IP{}
-	var Ifaces []string
+	var ifaces []string
 
 	if cfg.IPs != nil && len(cfg.IPs) > 0 {
 		ips = cfg.IPs
 	}
 
 	if cfg.Ifaces != nil && len(cfg.Ifaces) > 0 {
-		Ifaces = cfg.Ifaces
+		ifaces = cfg.Ifaces
 	}
 
 	return Service{
@@ -123,7 +123,7 @@ func NewService(cfg Config) (s Service, err error) {
 		Text:     text,
 		Port:     port,
 		IPs:      ips,
-		Ifaces:   Ifaces,
+		Ifaces:   ifaces,
 		ifaceIPs: map[string][]net.IP{},
 	}, nil
 }
@@ -142,11 +142,31 @@ func (s *Service) Interfaces() []*net.Interface {
 		return ifis
 	}
 
-	return multicastInterfaces()
+	return MulticastInterfaces()
+}
+
+// IsVisibleAtInterface returns true, if the service is published
+// at the network interface with name n.
+func (s *Service) IsVisibleAtInterface(n string) bool {
+	if len(s.Ifaces) == 0 {
+		return true
+	}
+
+	for _, name := range s.Ifaces {
+		if name == n {
+			return true
+		}
+	}
+
+	return false
 }
 
 // IPsAtInterface returns the ip address at a specific interface.
 func (s *Service) IPsAtInterface(iface *net.Interface) []net.IP {
+	if iface == nil {
+		return []net.IP{}
+	}
+
 	if ips, ok := s.ifaceIPs[iface.Name]; ok {
 		return ips
 	}
@@ -281,8 +301,8 @@ func parseHostname(str string) (name string, domain string) {
 	return
 }
 
-// multicastInterfaces returns a list of all available multicast network interfaces.
-func multicastInterfaces() []*net.Interface {
+// MulticastInterfaces returns a list of all active multicast network interfaces.
+func MulticastInterfaces(filters ...string) []*net.Interface {
 	var tmp []*net.Interface
 	ifaces, err := net.Interfaces()
 	if err != nil {
@@ -296,6 +316,10 @@ func multicastInterfaces() []*net.Interface {
 		}
 
 		if (iface.Flags & net.FlagMulticast) == 0 {
+			continue
+		}
+
+		if !containsIfaces(iface.Name, filters) {
 			continue
 		}
 
@@ -315,40 +339,16 @@ func multicastInterfaces() []*net.Interface {
 	return tmp
 }
 
-// addrsForInterface returns ipv4 and ipv6 addresses for a specific interface.
-func addrsForInterface(iface *net.Interface) ([]net.IP, []net.IP) {
-	var v4, v6, v6local []net.IP
-
-	addrs, _ := iface.Addrs()
-	for _, address := range addrs {
-		if ipnet, ok := address.(*net.IPNet); ok {
-			if ipnet.IP.To4() != nil {
-				v4 = append(v4, ipnet.IP)
-			} else {
-				switch ip := ipnet.IP.To16(); ip != nil {
-				case ip.IsGlobalUnicast():
-					v6 = append(v6, ipnet.IP)
-				case ip.IsLinkLocalUnicast():
-					v6local = append(v6local, ipnet.IP)
-				}
-			}
-		}
+func containsIfaces(iface string, filters []string) bool {
+	if filters == nil || len(filters) <= 0 {
+		return true
 	}
-	if len(v6) == 0 {
-		v6 = v6local
-	}
-	return v4, v6
-}
 
-func intersection(a []net.IP, b []net.IP) []net.IP {
-	var is []net.IP
-	for _, ea := range a {
-		for _, eb := range b {
-			if ea.Equal(eb) {
-				is = append(is, ea)
-			}
+	for _, ifn := range filters {
+		if ifn == iface {
+			return true
 		}
 	}
 
-	return is
+	return false
 }

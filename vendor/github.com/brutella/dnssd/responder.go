@@ -3,13 +3,14 @@ package dnssd
 import (
 	"context"
 	"fmt"
-	"github.com/brutella/dnssd/log"
-	"github.com/miekg/dns"
 	"math/rand"
 	"net"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/brutella/dnssd/log"
+	"github.com/miekg/dns"
 )
 
 type ReadFunc func(*Request)
@@ -117,6 +118,7 @@ func (r *responder) Respond(ctx context.Context) error {
 func (r *responder) announce(services []*Service) {
 	for _, service := range services {
 		for _, iface := range service.Interfaces() {
+			service, iface := service, iface
 			go r.announceAtInterface(service, iface)
 		}
 	}
@@ -149,10 +151,14 @@ func (r *responder) announceAtInterface(service *Service, iface *net.Interface) 
 	resp := &Response{msg: msg, iface: iface}
 
 	log.Debug.Println("Sending 1st announcement", msg)
-	r.conn.SendResponse(resp)
+	if err := r.conn.SendResponse(resp); err != nil {
+		log.Debug.Println("1st announcement:", err)
+	}
 	time.Sleep(1 * time.Second)
 	log.Debug.Println("Sending 2nd announcement", msg)
-	r.conn.SendResponse(resp)
+	if err := r.conn.SendResponse(resp); err != nil {
+		log.Debug.Println("2nd announcement:", err)
+	}
 }
 
 func (r *responder) register(ctx context.Context, srv Service) (Service, error) {
@@ -288,9 +294,13 @@ func (r *responder) unannounce(services []*Service) {
 		msg.Response = true
 		msg.Authoritative = true
 		resp := &Response{msg: msg, iface: iface}
-		r.conn.SendResponse(resp)
+		if err := r.conn.SendResponse(resp); err != nil {
+			log.Debug.Println("1st goodbye:", err)
+		}
 		time.Sleep(250 * time.Millisecond)
-		r.conn.SendResponse(resp)
+		if err := r.conn.SendResponse(resp); err != nil {
+			log.Debug.Println("2nd goodbye:", err)
+		}
 	}
 }
 
@@ -298,7 +308,7 @@ func (r *responder) handleQuery(req *Request, services []*Service) {
 	for _, q := range req.msg.Question {
 		msgs := []*dns.Msg{}
 		for _, srv := range services {
-			log.Debug.Printf("%s tries to give response to question %v\n", srv.ServiceInstanceName(), q)
+			log.Debug.Printf("%s tries to give response to question %v @%s\n", srv.ServiceInstanceName(), q, req.IfaceName())
 			if msg := r.handleQuestion(q, req, *srv); msg != nil {
 				msgs = append(msgs, msg)
 			} else {
@@ -370,7 +380,10 @@ func (r *responder) handleQuestion(q dns.Question, req *Request, srv Service) *d
 			extra = append(extra, aaaa)
 		}
 
-		extra = append(extra, NSEC(ptr, srv, req.iface))
+		if nsec := NSEC(ptr, srv, req.iface); nsec != nil {
+			extra = append(extra, nsec)
+		}
+
 		resp.Extra = extra
 
 		// Wait 20-125 msec for shared resource responses
@@ -391,8 +404,7 @@ func (r *responder) handleQuestion(q dns.Question, req *Request, srv Service) *d
 			extra = append(extra, aaaa)
 		}
 
-		nsec := NSEC(SRV(srv), srv, req.iface)
-		if nsec != nil {
+		if nsec := NSEC(SRV(srv), srv, req.iface); nsec != nil {
 			extra = append(extra, nsec)
 		}
 
@@ -413,9 +425,8 @@ func (r *responder) handleQuestion(q dns.Question, req *Request, srv Service) *d
 		}
 
 		resp.Answer = answer
-		nsec := NSEC(SRV(srv), srv, req.iface)
 
-		if nsec != nil {
+		if nsec := NSEC(SRV(srv), srv, req.iface); nsec != nil {
 			resp.Extra = []dns.RR{nsec}
 		}
 
@@ -466,7 +477,7 @@ func containsConflictingAnswers(req *Request, handle *serviceHandle) bool {
 	aaaas := AAAA(*handle.service, req.iface)
 	srv := SRV(*handle.service)
 
-	reqAs, reqAAAAs, reqSRVs := splitRecords(filterRecords(req.msg, handle.service))
+	reqAs, reqAAAAs, reqSRVs := splitRecords(filterRecords(req.msg, req.iface, handle.service))
 
 	if len(reqAs) > 0 && areDenyingAs(reqAs, as) {
 		log.Debug.Printf("%v != %v\n", reqAs, as)
