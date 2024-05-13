@@ -2,6 +2,7 @@ package hap
 
 import (
 	"sync"
+	"time"
 
 	"github.com/brutella/dnssd"
 	"github.com/brutella/hap/accessory"
@@ -10,9 +11,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/xiam/to"
-	"golang.org/x/text/secure/precis"
-	"golang.org/x/text/transform"
-	"golang.org/x/text/unicode/norm"
+	godiacritics "gopkg.in/Regis24GmbH/go-diacritics.v2"
 
 	"bytes"
 	"context"
@@ -25,7 +24,6 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-	"unicode"
 )
 
 // A server handles incoming HTTP request for an accessory.
@@ -138,6 +136,7 @@ func NewServer(store Store, a *accessory.A, as ...*accessory.A) (*Server, error)
 		r.Post("/pair-setup", s.pairSetup)
 		r.Post("/pair-verify", s.pairVerify)
 		r.Post("/identify", s.identify)
+		r.Post("/pairings", s.pairings)
 	})
 
 	// The json encoded content is encrypted. The encryption keys
@@ -147,7 +146,7 @@ func NewServer(store Store, a *accessory.A, as ...*accessory.A) (*Server, error)
 		r.Get("/accessories", s.getAccessories)
 		r.Get("/characteristics", s.getCharacteristics)
 		r.Put("/characteristics", s.putCharacteristics)
-		r.Post("/pairings", s.pairings)
+		r.Put("/prepare", s.prepareCharacteristics)
 	})
 
 	return s, nil
@@ -163,6 +162,27 @@ func (s *Server) ServeMux() ServeMux {
 func (s *Server) IsAuthorized(request *http.Request) bool {
 	ss, _ := s.getSession(request.RemoteAddr)
 	return ss != nil
+}
+
+func (s *Server) TimedWrite(request *http.Request) *TimedWrite {
+	if ss, _ := s.getSession(request.RemoteAddr); ss != nil {
+		return ss.twr
+	}
+
+	return nil
+}
+
+func (s *Server) SetTimedWrite(ttl, pid uint64, request *http.Request) {
+	if ss, _ := s.getSession(request.RemoteAddr); ss != nil {
+		t := time.Now().Add(time.Duration(ttl) * time.Millisecond)
+		ss.twr = &TimedWrite{t, pid}
+	}
+}
+
+func (s *Server) DelTimedWrite(request *http.Request) {
+	if ss, _ := s.getSession(request.RemoteAddr); ss != nil {
+		ss.twr = nil
+	}
 }
 
 // IsPaired returns true if the server is paired with a client (iOS).
@@ -484,9 +504,8 @@ func (s *Server) service() (dnssd.Service, error) {
 	//
 	// [Radar] http://openradar.appspot.com/radar?id=4931940373233664
 	stripped := strings.Replace(s.a.Info.Name.Value(), " ", "_", -1)
-
 	cfg := dnssd.Config{
-		Name:   removeAccentsFromString(stripped),
+		Name:   normalize(stripped),
 		Type:   "_hap._tcp",
 		Domain: "local",
 		Host:   strings.Replace(s.uuid, ":", "", -1), // use the id (without the colons) to get unique hostnames
@@ -521,19 +540,8 @@ func (s *Server) fmtPin() string {
 	return first + "-" + second + "-" + third
 }
 
-// RemoveAccentsFromString removes accent characters from string
-// From https://stackoverflow.com/a/40405242/424814
-func removeAccentsFromString(v string) string {
-	var loosecompare = precis.NewIdentifier(
-		precis.AdditionalMapping(func() transform.Transformer {
-			return transform.Chain(norm.NFD, transform.RemoveFunc(func(r rune) bool {
-				return unicode.Is(unicode.Mn, r)
-			}))
-		}),
-		precis.Norm(norm.NFC), // This is the default; be explicit though.
-	)
-	p, _ := loosecompare.String(v)
-	return p
+func normalize(str string) string {
+	return godiacritics.Normalize(str)
 }
 
 func allZero(s []byte) bool {

@@ -11,6 +11,11 @@ lrwxrwxrwx 1 root root 13 Oct 24 07:49 usb-1a86_USB2.0-Serial-if00-port0 -> ../.
 lrwxrwxrwx 1 root root 13 Dec 22 13:02 usb-SHK_SIGNALduino_868-if00-port0 -> ../../ttyUSB0
 ```
 
+If needed remove the modemmanager
+```shell
+sudo apt-get purge modemmanager
+```
+
 
 ### compile for raspberry pi
 

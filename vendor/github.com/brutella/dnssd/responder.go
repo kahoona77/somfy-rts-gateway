@@ -44,6 +44,7 @@ type responder struct {
 	upIfaces  []string
 }
 
+// NewResponder returns a new mDNS responder.
 func NewResponder() (Responder, error) {
 	conn, err := newMDNSConn()
 	if err != nil {
@@ -86,11 +87,12 @@ func (r *responder) Add(srv Service) (ServiceHandle, error) {
 		ctx, cancel := context.WithCancel(context.TODO())
 		defer cancel()
 
-		if srv, err := r.register(ctx, srv); err != nil {
+		srv, err := r.register(ctx, srv)
+		if err != nil {
 			return nil, err
-		} else {
-			return r.addManaged(srv), nil
 		}
+
+		return r.addManaged(srv), nil
 	}
 
 	return r.addUnmanaged(srv), nil
@@ -101,12 +103,13 @@ func (r *responder) Respond(ctx context.Context) error {
 	r.isRunning = true
 	for _, h := range r.unmanaged {
 		log.Debug.Println(h.service)
-		if srv, err := r.register(ctx, *h.service); err != nil {
+		srv, err := r.register(ctx, *h.service)
+		if err != nil {
 			return err
-		} else {
-			h.service = &srv
-			r.managed = append(r.managed, h)
 		}
+
+		h.service = &srv
+		r.managed = append(r.managed, h)
 	}
 	r.unmanaged = []*serviceHandle{}
 	r.mutex.Unlock()
@@ -127,7 +130,7 @@ func (r *responder) announce(services []*Service) {
 func (r *responder) announceAtInterface(service *Service, iface *net.Interface) {
 	ips := service.IPsAtInterface(iface)
 	if len(ips) == 0 {
-		log.Debug.Printf("No IPs for service %s at %s\n", service.ServiceInstanceName(), iface.Name)
+		log.Debug.Printf("No IPs for service %s at %s\n", service.UnescapedServiceInstanceName(), iface.Name)
 		return
 	}
 
@@ -166,7 +169,7 @@ func (r *responder) register(ctx context.Context, srv Service) (Service, error) 
 		return srv, fmt.Errorf("cannot register service when responder is not responding")
 	}
 
-	log.Debug.Printf("Probing for host %s and service %s…\n", srv.Hostname(), srv.ServiceInstanceName())
+	log.Debug.Printf("Probing for host %s and service %s…\n", srv.Hostname(), srv.UnescapedServiceInstanceName())
 	probed, err := ProbeService(ctx, srv)
 	if err != nil {
 		return srv, err
@@ -308,7 +311,7 @@ func (r *responder) handleQuery(req *Request, services []*Service) {
 	for _, q := range req.msg.Question {
 		msgs := []*dns.Msg{}
 		for _, srv := range services {
-			log.Debug.Printf("%s tries to give response to question %v @%s\n", srv.ServiceInstanceName(), q, req.IfaceName())
+			log.Debug.Printf("%s tries to give response to question %v @%s\n", srv.UnescapedServiceInstanceName(), q, req.IfaceName())
 			if msg := r.handleQuestion(q, req, *srv); msg != nil {
 				msgs = append(msgs, msg)
 			} else {

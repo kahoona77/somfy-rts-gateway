@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/brutella/dnssd/log"
 	"github.com/miekg/dns"
@@ -12,21 +13,28 @@ import (
 )
 
 var (
+	// IPv4LinkLocalMulticast is the IPv4 link-local multicast address.
 	IPv4LinkLocalMulticast = net.ParseIP("224.0.0.251")
+	// IPv6LinkLocalMulticast is the IPv6 link-local multicast address.
 	IPv6LinkLocalMulticast = net.ParseIP("ff02::fb")
 
+	// AddrIPv4LinkLocalMulticast is the IPv4 link-local multicast UDP address.
 	AddrIPv4LinkLocalMulticast = &net.UDPAddr{
 		IP:   IPv4LinkLocalMulticast,
 		Port: 5353,
 	}
 
+	// AddrIPv6LinkLocalMulticast is the IPv5 link-local multicast UDP address.
 	AddrIPv6LinkLocalMulticast = &net.UDPAddr{
 		IP:   IPv6LinkLocalMulticast,
 		Port: 5353,
 	}
 
-	TTLDefault  uint32 = 75 * 60 // Default ttl for mDNS resource records
-	TTLHostname uint32 = 120     // TTL for mDNS resource records containing the host name
+	// TTLDefault is the default time-to-live for mDNS resource records.
+	TTLDefault uint32 = 75 * 6
+
+	// TTLHostname is the default time-to-livefor mDNS hostname records.
+	TTLHostname uint32 = 120
 )
 
 // Query is a mDNS query
@@ -63,10 +71,12 @@ func (r Request) String() string {
 	return fmt.Sprintf("%s@%s\n%v", r.from.IP, r.IfaceName(), r.msg)
 }
 
+// Raw returns the raw DNS maessage.
 func (r Request) Raw() *dns.Msg {
 	return r.msg
 }
 
+// From returns the sender address.
 func (r Request) From() *net.UDPAddr {
 	return r.from
 }
@@ -105,14 +115,19 @@ type mdnsConn struct {
 	ch   chan *Request
 }
 
+// NewMDNSConn returns a new mdns connection.
 func NewMDNSConn() (MDNSConn, error) {
 	return newMDNSConn()
 }
 
+// SendQuery sends a query.
 func (c *mdnsConn) SendQuery(q *Query) error {
 	return c.sendQuery(q.msg, q.iface)
 }
 
+// SendResponse sends a response.
+// The message is sent as unicast, if an receiver address is specified in the response.
+// Otherwise the message is sent multicast.
 func (c *mdnsConn) SendResponse(resp *Response) error {
 	if resp.addr != nil {
 		return c.sendResponseTo(resp.msg, resp.iface, resp.addr)
@@ -121,10 +136,12 @@ func (c *mdnsConn) SendResponse(resp *Response) error {
 	return c.sendResponse(resp.msg, resp.iface)
 }
 
+// Read returns a channel, which receives mDNS requests.
 func (c *mdnsConn) Read(ctx context.Context) <-chan *Request {
 	return c.read(ctx)
 }
 
+// Drain drains the incoming requests channel.
 func (c *mdnsConn) Drain(ctx context.Context) {
 	log.Debug.Println("Draining connection")
 	for {
@@ -137,6 +154,7 @@ func (c *mdnsConn) Drain(ctx context.Context) {
 	}
 }
 
+// Close closes the mDNS connection.
 func (c *mdnsConn) Close() {
 	c.close()
 }
@@ -337,6 +355,7 @@ func (c *mdnsConn) writeMsgTo(m *dns.Msg, iface *net.Interface, addr *net.UDPAdd
 					IfIndex: iface.Index,
 				}
 			}
+			c.ipv4.PacketConn.SetWriteDeadline(time.Now().Add(time.Second))
 			if _, err = c.ipv4.WriteTo(out, ctrl, addr); err != nil {
 				return err
 			}
@@ -351,6 +370,7 @@ func (c *mdnsConn) writeMsgTo(m *dns.Msg, iface *net.Interface, addr *net.UDPAdd
 					IfIndex: iface.Index,
 				}
 			}
+			c.ipv6.PacketConn.SetWriteDeadline(time.Now().Add(time.Second))
 			if _, err = c.ipv6.WriteTo(out, ctrl, addr); err != nil {
 				return err
 			}

@@ -1,6 +1,8 @@
 package characteristic
 
 import (
+	"sync"
+
 	"github.com/brutella/hap/log"
 	"github.com/xiam/to"
 
@@ -11,9 +13,10 @@ import (
 const (
 	PermissionRead          = "pr" // The characteristic can only be read by paired controllers.
 	PermissionWrite         = "pw" // The characteristic can only be written by paired controllers.
+	PermissionTimedWrite    = "tw" // The characteristic allows only timed write procedure.
 	PermissionEvents        = "ev" // The characteristic supports events.
-	PermissionHidden        = "hd" // The characteristic is hidden from the user
-	PermissionWriteResponse = "wr" // The characteristic supports write response
+	PermissionHidden        = "hd" // The characteristic is hidden from the user.
+	PermissionWriteResponse = "wr" // The characteristic supports write response.
 )
 
 const (
@@ -83,9 +86,6 @@ type C struct {
 	// ValidRange is a 2 element array the valid range start and end.
 	ValidRange []int
 
-	// Stores which connected client has events enabled for this characteristic.
-	Events map[string]bool
-
 	// ValueRequestFunc is called when the value of C is requested by a
 	// paired controller via an HTTP request.
 	// If the value of C represents the state of a remote object, you can use
@@ -112,12 +112,17 @@ type C struct {
 	// when the new value is the same as the old value.
 	// This flag is only used for programmable switch events.
 	updateOnSameValue bool
+
+	// Stores which connected client has events enabled for this characteristic.
+	events map[string]bool
+
+	m sync.Mutex
 }
 
 // New returns a new characteristic.
 func New() *C {
 	return &C{
-		Events:         make(map[string]bool),
+		events:         make(map[string]bool),
 		valUpdateFuncs: make([]ValueUpdateFunc, 0),
 	}
 }
@@ -125,7 +130,9 @@ func New() *C {
 // OnCValueUpdate register the given function which is called
 // when the value of the characteristic is updated.
 func (c *C) OnCValueUpdate(fn ValueUpdateFunc) {
+	c.m.Lock()
 	c.valUpdateFuncs = append(c.valUpdateFuncs, fn)
+	c.m.Unlock()
 }
 
 // Sets the value of c to val and returns a status code.
@@ -151,8 +158,13 @@ func (c *C) setValue(v interface{}, req *http.Request) (interface{}, int) {
 		newVal = c.clampInt(newVal.(int))
 	}
 
+	c.m.Lock()
+	// reference old value
+	oldVal := c.Val
+	c.m.Unlock()
+
 	// ignore the same newVal
-	if c.Val == newVal && !c.updateOnSameValue {
+	if oldVal == newVal && !c.updateOnSameValue {
 		// no error
 		return nil, 0
 	}
@@ -172,14 +184,14 @@ func (c *C) setValue(v interface{}, req *http.Request) (interface{}, int) {
 		}
 	}
 
-	// reference old value
-	oldVal := c.Val
-
+	c.m.Lock()
 	// update to new value
 	c.Val = newVal
+	funcs := c.valUpdateFuncs
+	c.m.Unlock()
 
 	// call update funcs
-	for _, fn := range c.valUpdateFuncs {
+	for _, fn := range funcs {
 		fn(c, newVal, oldVal, req)
 	}
 
@@ -200,12 +212,31 @@ func (c *C) ValueRequest(req *http.Request) (interface{}, int) {
 		return c.ValueRequestFunc(req)
 	}
 
-	return c.value(), 0
+	return c.Value(), 0
 }
 
-// value returns the value of C
-func (c *C) value() interface{} {
+// Value returns the value of C
+func (c *C) Value() interface{} {
+	c.m.Lock()
+	defer c.m.Unlock()
 	return c.Val
+}
+
+func (c *C) SetEvent(remoteAddr string, enable bool) {
+	c.m.Lock()
+	defer c.m.Unlock()
+	c.events[remoteAddr] = enable
+}
+
+func (c *C) HasEventsEnabled(remoteAddr string) bool {
+	c.m.Lock()
+	defer c.m.Unlock()
+
+	ev, ok := c.events[remoteAddr]
+	if ok {
+		return ev
+	}
+	return false
 }
 
 // IsWritable returns true if clients are allowed
@@ -225,6 +256,30 @@ func (c *C) IsWritable() bool {
 func (c *C) IsReadable() bool {
 	for _, p := range c.Permissions {
 		if p == PermissionRead {
+			return true
+		}
+	}
+
+	return false
+}
+
+// RequiresTimedWrite returns true if the value can
+// only be set with a timed write procedure.
+func (c *C) RequiresTimedWrite() bool {
+	for _, p := range c.Permissions {
+		if p == PermissionTimedWrite {
+			return true
+		}
+	}
+
+	return false
+}
+
+// IsWriteResponse returns true if the value can
+// return a response on write
+func (c *C) IsWriteResponse() bool {
+	for _, p := range c.Permissions {
+		if p == PermissionWriteResponse {
 			return true
 		}
 	}
@@ -287,6 +342,8 @@ func (c *C) MarshalJSON() ([]byte, error) {
 		// 2022-03-21 (mah) FIXME provide a http request instead of nil
 		if v, s := c.ValueRequest(nil); s == 0 {
 			d.Value = &V{v}
+		} else {
+			d.Value = &V{c.Value()} // dummy "zero" value
 		}
 	}
 
@@ -341,6 +398,11 @@ func (c *C) convert(v interface{}) interface{} {
 }
 
 func (c *C) validVal(v interface{}) bool {
+	iv, ok := v.(int)
+	if !ok {
+		return true
+	}
+
 	if len(c.ValidVals) > 0 {
 		for _, val := range c.ValidVals {
 			if val == v {
@@ -351,7 +413,7 @@ func (c *C) validVal(v interface{}) bool {
 		return false
 	}
 
-	if iv, ok := v.(int); ok && len(c.ValidRange) == 2 {
+	if len(c.ValidRange) == 2 {
 		return c.ValidRange[0] <= iv && c.ValidRange[1] >= iv
 	}
 

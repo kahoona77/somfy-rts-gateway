@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-//AppConfig the Emerald config
+// AppConfig the Emerald config
 type AppConfig struct {
 	Port               string
 	BasePath           string
@@ -20,7 +20,7 @@ func (c *AppConfig) AbsolutePath(path string) string {
 	return fmt.Sprintf("%s/%s", c.BasePath, path)
 }
 
-//LoadConfiguration loads the configuration file
+// LoadConfiguration loads the configuration file
 func LoadConfiguration() AppConfig {
 	conf := AppConfig{}
 
@@ -41,7 +41,7 @@ func LoadConfiguration() AppConfig {
 
 	conf.SignalduinoAddress = os.Getenv("SIGNALDUINO_ADDRESS")
 	if conf.SignalduinoAddress == "" {
-		conf.SignalduinoAddress = "COM3"
+		conf.SignalduinoAddress = "/dev/ttyUSB0"
 	}
 
 	conf.HomekitConfigPath = os.Getenv("HOMEKIT_CONFIG_PATH")

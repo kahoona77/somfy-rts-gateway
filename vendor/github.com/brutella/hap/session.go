@@ -1,6 +1,8 @@
 package hap
 
 import (
+	"time"
+
 	"github.com/brutella/hap/chacha20poly1305"
 	"github.com/brutella/hap/hkdf"
 
@@ -50,6 +52,14 @@ type session struct {
 	decryptKey   [32]byte
 	encryptCount uint64
 	decryptCount uint64
+	mu           sync.Mutex
+
+	twr *TimedWrite
+}
+
+type TimedWrite struct {
+	deadline time.Time
+	pid      uint64
 }
 
 func newSession(shared [32]byte, p Pairing) (*session, error) {
@@ -80,8 +90,10 @@ func (s *session) Encrypt(r io.Reader) (io.Reader, error) {
 	var buf bytes.Buffer
 	for _, p := range packets {
 		var nonce [8]byte
+		s.mu.Lock()
 		binary.LittleEndian.PutUint64(nonce[:], s.encryptCount)
 		s.encryptCount++
+		s.mu.Unlock()
 
 		bLength := make([]byte, 2)
 		binary.LittleEndian.PutUint16(bLength, uint16(p.length))
@@ -122,8 +134,10 @@ func (s *session) Decrypt(r io.Reader) (io.Reader, error) {
 		}
 
 		var nonce [8]byte
+		s.mu.Lock()
 		binary.LittleEndian.PutUint64(nonce[:], s.decryptCount)
 		s.decryptCount++
+		s.mu.Unlock()
 
 		lengthBytes := make([]byte, 2)
 		binary.LittleEndian.PutUint16(lengthBytes, uint16(length))
