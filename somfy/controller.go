@@ -2,11 +2,12 @@ package somfy
 
 import (
 	"fmt"
-	"github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
-	"io/ioutil"
 	"os"
 	"path/filepath"
+
+	"github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
+
 	"somfyRtsGateway/core"
 	"somfyRtsGateway/signalduino"
 )
@@ -62,7 +63,7 @@ func (c *Controller) Close() {
 }
 
 func loadDevices(file string) ([]*Device, error) {
-	yamlFile, err := ioutil.ReadFile(file)
+	yamlFile, err := os.ReadFile(file)
 	if err != nil {
 		return nil, err
 	}
@@ -93,22 +94,14 @@ func (c *Controller) save() error {
 		return err
 	}
 
-	// write to file
-	f, err := os.Create(c.devicesFile)
-	if err != nil {
+	if err := os.WriteFile(c.devicesFile, d, 0644); err != nil {
 		return err
 	}
 
-	err = ioutil.WriteFile(f.Name(), d, 0644)
-	if err != nil {
-		return err
-	}
-
-	path, _ := filepath.Abs(f.Name())
-
+	path, _ := filepath.Abs(c.devicesFile)
 	logrus.Infof("saved config to: %s", path)
 
-	return f.Close()
+	return nil
 }
 
 func (c *Controller) SendCmd(dc core.DeviceCmd) {
@@ -126,19 +119,14 @@ func (c *Controller) SendCmd(dc core.DeviceCmd) {
 	switch dc.Cmd {
 	case CmdUp:
 		d.Up(c.sig)
-		break
 	case CmdDown:
 		d.Down(c.sig)
-		break
 	case CmdMy:
 		d.My(c.sig)
-		break
 	case CmdProg:
 		d.Prog(c.sig)
-		break
 	case CmdPosition:
 		d.SetPosition(c.sig, dc.Pos)
-		break
 	default:
 		logrus.Warnf("error unknown command: %s", dc.Cmd)
 		return

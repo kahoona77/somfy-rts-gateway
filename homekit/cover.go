@@ -27,13 +27,10 @@ func (c *Cover) OnTargetPositionUpdate(pos int) {
 	switch pos {
 	case 0:
 		cmd = somfy.CmdDown
-		break
 	case 100:
 		cmd = somfy.CmdUp
-		break
 	default:
 		cmd = somfy.CmdPosition
-		break
 	}
 
 	c.cmdChan <- core.DeviceCmd{
