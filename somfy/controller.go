@@ -30,29 +30,32 @@ func (c *Controller) Devices() []core.Device {
 }
 
 func NewController(ctx *core.Ctx) (*Controller, error) {
-	s, err := signalduino.Open(ctx.Config.SignalduinoAddress)
-	if err != nil {
-		return nil, fmt.Errorf("error opening signalduino on address '%s': %v", ctx.Config.SignalduinoAddress, err)
-	}
-	s.Version()
-
 	devices, err := loadDevices(ctx.Config.DevicesFile)
 	if err != nil {
-		return nil, fmt.Errorf("error loading devices from '%s': %v", ctx.Config.DevicesFile, err)
+		return nil, fmt.Errorf("error loading devices from %s: %v", ctx.Config.DevicesFile, err)
 	}
 
 	ctrl := &Controller{
-		sig:         s,
 		devices:     devices,
 		devicesFile: ctx.Config.DevicesFile,
 	}
 	go ctrl.listen(ctx.CommandChannel)
+
+	s, err := signalduino.Open(ctx.Config.SignalduinoAddress)
+	if err != nil {
+		return ctrl, fmt.Errorf("error opening signalduino on address %s: %v", ctx.Config.SignalduinoAddress, err)
+	}
+	s.Version()
+	ctrl.sig = s
 
 	return ctrl, nil
 }
 
 func (c *Controller) Close() {
 	logrus.Debugf("closing controller...")
+	if c == nil || c.sig == nil {
+		return
+	}
 	if err := c.sig.Close(); err != nil {
 		logrus.Errorf("error closing signalduino: %v", err)
 	}
@@ -72,6 +75,10 @@ func loadDevices(file string) ([]*Device, error) {
 func (c *Controller) listen(queue chan core.DeviceCmd) {
 	for dc := range queue {
 		if dc.Cmd == "ping" {
+			if c.sig == nil {
+				logrus.Errorf("ignoring ping command: signalduino is not available")
+				continue
+			}
 			c.sig.Ping()
 			continue
 		}
@@ -108,6 +115,12 @@ func (c *Controller) SendCmd(dc core.DeviceCmd) {
 	d, err := c.GetDevice(dc.Device)
 	if err != nil {
 		logrus.Warn(err)
+		return
+	}
+
+	if c.sig == nil {
+		logrus.Errorf("cannot send command %s to device %s: signalduino is not available", dc.Cmd, dc.Device)
+		return
 	}
 
 	switch dc.Cmd {

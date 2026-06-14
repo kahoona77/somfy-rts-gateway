@@ -23,6 +23,9 @@ func main() {
 	if err != nil {
 		logrus.Errorf("error creating somfy-controller: %v", err)
 	}
+	if ctrl == nil {
+		logrus.Fatal("somfy-controller is not available")
+	}
 	defer ctrl.Close()
 	ctx.Controller = ctrl
 
