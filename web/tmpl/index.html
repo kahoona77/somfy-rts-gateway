@@ -1,34 +1,44 @@
 {{ define "content"}}
-<div class="header">Somfy RTS Gateway</div>
+<section class="hero card">
+    <div class="eyebrow">Local Control</div>
+    <h1 class="header">Somfy RTS Gateway</h1>
+    <p class="lead">Fast access to your configured shutters from phone and desktop, without extra navigation.</p>
+</section>
+
 <div class="home">
-    {{ range .Devices }}
-    <div onclick="window.location.href = 'servers/{{.Id}}'" class="device card">
-        <div>
-            <div>{{.Name}} ({{.Id}})</div>
-        </div>
+    {{ if .Devices }}
+        {{ range .Devices }}
+        <section class="device card">
+            <div class="device-copy">
+                <div class="device-topline">
+                    <h2 class="device-name">{{.Name}}</h2>
+                    <div>
+                        <form id="prog-{{.Id}}" action="web/{{.Id}}/prog" method="post"></form>
+                        <button class="btn ghost btn-prog" type="submit" form="prog-{{.Id}}">Prog</button>
 
-        <div class="buttons">
-            <form id="up-{{.Id}}" action="web/{{.Id}}/up" method="post" hidden></form>
-            <button class="btn primary" type="submit" form="up-{{.Id}}" onclick="event.stopPropagation();">
-               up
-            </button>
+                        <span class="device-chip">{{.GetPosition}}%</span>
+                    </div>
 
-            <form id="down-{{.Id}}" action="web/{{.Id}}/down" method="post" hidden></form>
-            <button class="btn primary" type="submit" form="down-{{.Id}}" onclick="event.stopPropagation();">
-                down
-            </button>
 
-            <form id="stop-{{.Id}}" action="web/{{.Id}}/my" method="post" hidden></form>
-            <button class="btn primary" type="submit" form="stop-{{.Id}}" onclick="event.stopPropagation();">
-                stop
-            </button>
+                </div>
+            </div>
 
-            <form id="prog-{{.Id}}" action="web/{{.Id}}/prog" method="post" hidden></form>
-            <button class="btn primary" type="submit" form="prog-{{.Id}}" onclick="event.stopPropagation();">
-                prog
-            </button>
-        </div>
-    </div>
-    {{end}}
+            <div class="buttons">
+                <form id="up-{{.Id}}" action="web/{{.Id}}/up" method="post"></form>
+                <button class="btn primary btn-up" type="submit" form="up-{{.Id}}">Up</button>
+
+                <form id="stop-{{.Id}}" action="web/{{.Id}}/my" method="post"></form>
+                <button class="btn secondary btn-stop" type="submit" form="stop-{{.Id}}">Stop</button>
+
+                <form id="down-{{.Id}}" action="web/{{.Id}}/down" method="post"></form>
+                <button class="btn primary btn-down" type="submit" form="down-{{.Id}}">Down</button>
+            </div>
+        </section>
+        {{ end }}
+    {{ else }}
+        <section class="empty-state card">
+            <div class="device-name">No devices configured</div>
+        </section>
+    {{ end }}
 </div>
 {{end}}
