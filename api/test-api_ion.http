@@ -1,5 +1,5 @@
 ### List
-GET http://kahoona-ion:9070/somfy/
+GET http://192.168.1.100:9070/somfy/
 
 ### Get Device
 GET http://kahoona-ion:9070/somfy/u1

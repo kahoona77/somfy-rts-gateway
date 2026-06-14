@@ -2,6 +2,12 @@
 
 A Somfy RTS Gateway using Signalduino
 
+### local toolchain
+```shell
+mise install
+mise use -g go@1.26.4
+```
+
 ### Find USB device
 ```shell
 ls -l /dev/serial/by-id 

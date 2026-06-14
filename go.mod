@@ -1,6 +1,8 @@
 module somfyRtsGateway
 
-go 1.22
+go 1.26.0
+
+toolchain go1.26.4
 
 require (
 	github.com/brutella/hap v0.0.33
