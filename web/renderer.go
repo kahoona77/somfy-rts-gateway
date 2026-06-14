@@ -2,30 +2,28 @@ package web
 
 import (
 	"fmt"
-	"github.com/labstack/echo/v4"
-	"github.com/sirupsen/logrus"
 	"html/template"
 	"io"
+
+	"github.com/labstack/echo/v4"
+
 	"somfyRtsGateway/core"
 )
 
 type Template struct {
-	ctx *core.Ctx
+	templates *template.Template
 }
 
 func NewTemplate(ctx *core.Ctx) *Template {
-	return &Template{ctx: ctx}
+	templates := template.Must(template.New("base.html").Funcs(template.FuncMap{
+		"basePath": func() string {
+			return fmt.Sprintf("%s/", ctx.Config.BasePath)
+		},
+	}).ParseFS(mustSub("tmpl"), "*.html"))
+
+	return &Template{templates: templates}
 }
 
-func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
-	temp, err := template.New("base.html").Funcs(template.FuncMap{
-		"basePath": func() string {
-			return fmt.Sprintf("%s/", t.ctx.Config.BasePath)
-		},
-	}).ParseFiles("web/tmpl/base.html", "web/tmpl/"+name)
-	if err != nil {
-		logrus.Errorf("error parsing templates: %v", err)
-		return err
-	}
-	return temp.ExecuteTemplate(w, temp.Name(), data)
+func (t *Template) Render(w io.Writer, _ string, data interface{}, _ echo.Context) error {
+	return t.templates.ExecuteTemplate(w, "base.html", data)
 }

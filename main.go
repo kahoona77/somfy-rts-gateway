@@ -53,7 +53,7 @@ func newServer(ctx *core.Ctx, ctrl *somfy.Controller) *echo.Echo {
 	root.GET("/", somfy.ListDevices(ctrl))
 	root.GET("/:device", somfy.GetDevice(ctrl))
 	root.POST("/:device/:cmd", somfy.Cmd)
-	root.Static("/static", "./web/static")
+	root.StaticFS("/static", web.StaticFS())
 	root.GET("/web", views.Index)
 	root.POST("/web/:device/:cmd", views.Cmd)
 
