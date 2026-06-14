@@ -57,10 +57,10 @@ func lookupInstance(ctx context.Context, instance string, conn MDNSConn) (srv Se
 		select {
 		case q := <-qs:
 			if err := conn.SendQuery(q); err != nil {
-				log.Info.Println(err)
+				log.Info.Println("dnssd:", err)
 			}
 		case req := <-ch:
-			cache.UpdateFrom(req.msg, req.iface)
+			cache.UpdateFrom(req)
 			if s, ok := cache.services[instance]; ok {
 				srv = *s
 				return

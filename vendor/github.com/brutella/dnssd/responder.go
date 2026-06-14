@@ -100,19 +100,28 @@ func (r *responder) Add(srv Service) (ServiceHandle, error) {
 
 func (r *responder) Respond(ctx context.Context) error {
 	r.mutex.Lock()
-	r.isRunning = true
-	for _, h := range r.unmanaged {
-		log.Debug.Println(h.service)
-		srv, err := r.register(ctx, *h.service)
-		if err != nil {
-			return err
-		}
+	err := func() error {
+		r.isRunning = true
+		for _, h := range r.unmanaged {
+			log.Debug.Println(h.service)
+			srv, err := r.register(ctx, *h.service)
+			if err != nil {
+				return err
+			}
 
-		h.service = &srv
-		r.managed = append(r.managed, h)
-	}
-	r.unmanaged = []*serviceHandle{}
+			h.service = &srv
+			r.managed = append(r.managed, h)
+		}
+		r.unmanaged = []*serviceHandle{}
+		return nil
+	}()
 	r.mutex.Unlock()
+
+	if err != nil {
+		return err
+	}
+
+	go r.linkSubscribe(ctx)
 
 	return r.respond(ctx)
 }
@@ -130,7 +139,7 @@ func (r *responder) announce(services []*Service) {
 func (r *responder) announceAtInterface(service *Service, iface *net.Interface) {
 	ips := service.IPsAtInterface(iface)
 	if len(ips) == 0 {
-		log.Debug.Printf("No IPs for service %s at %s\n", service.UnescapedServiceInstanceName(), iface.Name)
+		log.Debug.Printf("No IPs for service %s at %s\n", service.ServiceInstanceName(), iface.Name)
 		return
 	}
 
@@ -169,7 +178,7 @@ func (r *responder) register(ctx context.Context, srv Service) (Service, error) 
 		return srv, fmt.Errorf("cannot register service when responder is not responding")
 	}
 
-	log.Debug.Printf("Probing for host %s and service %s…\n", srv.Hostname(), srv.UnescapedServiceInstanceName())
+	log.Debug.Printf("Probing for host %s and service %s…\n", srv.Hostname(), srv.ServiceInstanceName())
 	probed, err := ProbeService(ctx, srv)
 	if err != nil {
 		return srv, err
@@ -242,22 +251,23 @@ func (r *responder) handleRequest(req *Request) {
 		req.msg = mergeMsgs(msgs)
 	}
 
-	// Conflicting records remove managed services from
-	// the responder and trigger reprobing
-	conflicts := findConflicts(req, r.managed)
-	for _, h := range conflicts {
-		log.Debug.Println("Reprobe for", h.service)
-		go r.reprobe(h)
+	if len(req.msg.Question) > 0 {
+		r.handleQuery(req, services(r.managed))
+	} else {
+		// Check if the request contains any conflicting records.
+		conflicts := findConflicts(req, r.managed)
+		for _, h := range conflicts {
+			log.Debug.Println("Reprobe for", h.service)
+			go r.reprobe(h)
 
-		for i, m := range r.managed {
-			if h == m {
-				r.managed = append(r.managed[:i], r.managed[i+1:]...)
-				break
+			for i, m := range r.managed {
+				if h == m {
+					r.managed = append(r.managed[:i], r.managed[i+1:]...)
+					break
+				}
 			}
 		}
 	}
-
-	r.handleQuery(req, services(r.managed))
 }
 
 func (r *responder) unannounce(services []*Service) {
@@ -311,7 +321,7 @@ func (r *responder) handleQuery(req *Request, services []*Service) {
 	for _, q := range req.msg.Question {
 		msgs := []*dns.Msg{}
 		for _, srv := range services {
-			log.Debug.Printf("%s tries to give response to question %v @%s\n", srv.UnescapedServiceInstanceName(), q, req.IfaceName())
+			log.Debug.Printf("%s tries to give response to question %v @%s\n", srv.ServiceInstanceName(), q, req.IfaceName())
 			if msg := r.handleQuestion(q, req, *srv); msg != nil {
 				msgs = append(msgs, msg)
 			} else {
@@ -321,16 +331,22 @@ func (r *responder) handleQuery(req *Request, services []*Service) {
 
 		msg := mergeMsgs(msgs)
 		msg.SetReply(req.msg)
-		msg.Question = nil
 		msg.Response = true
 		msg.Authoritative = true
+
+		// Legacy unicast response MUST be a conventional DNS server response (and thus, includes the question).
+		if isLegacyUnicastSource(req.from) {
+			msg.Question = []dns.Question{q}
+		} else {
+			msg.Question = nil
+		}
 
 		if len(msg.Answer) == 0 {
 			log.Debug.Println("No answers")
 			continue
 		}
 
-		if isUnicastQuestion(q) {
+		if isUnicastQuestion(q) || isLegacyUnicastSource(req.from) {
 			resp := &Response{msg: msg, addr: req.from, iface: req.iface}
 			log.Debug.Printf("Send unicast response\n%v to %v\n", msg, resp.addr)
 			if err := r.conn.SendResponse(resp); err != nil {
@@ -367,7 +383,6 @@ func (r *responder) reprobe(h *serviceHandle) {
 
 func (r *responder) handleQuestion(q dns.Question, req *Request, srv Service) *dns.Msg {
 	resp := new(dns.Msg)
-
 	switch strings.ToLower(q.Name) {
 	case strings.ToLower(srv.ServiceName()):
 		ptr := PTR(srv)
@@ -394,7 +409,7 @@ func (r *responder) handleQuestion(q dns.Question, req *Request, srv Service) *d
 		log.Debug.Println("Shared record response wait", delay)
 		time.Sleep(delay)
 
-	case strings.ToLower(srv.ServiceInstanceName()):
+	case strings.ToLower(srv.EscapedServiceInstanceName()):
 		resp.Answer = []dns.RR{SRV(srv), TXT(srv), PTR(srv)}
 
 		var extra []dns.RR
@@ -413,8 +428,10 @@ func (r *responder) handleQuestion(q dns.Question, req *Request, srv Service) *d
 
 		resp.Extra = extra
 
-		// Set cache flush bit for non-shared records
-		setAnswerCacheFlushBit(resp)
+		if !isLegacyUnicastSource(req.from) {
+			// Set cache flush bit for non-shared records
+			setAnswerCacheFlushBit(resp)
+		}
 
 	case strings.ToLower(srv.Hostname()):
 		var answer []dns.RR
@@ -433,8 +450,10 @@ func (r *responder) handleQuestion(q dns.Question, req *Request, srv Service) *d
 			resp.Extra = []dns.RR{nsec}
 		}
 
-		// Set cache flush bit for non-shared records
-		setAnswerCacheFlushBit(resp)
+		if !isLegacyUnicastSource(req.from) {
+			// Set cache flush bit for non-shared records
+			setAnswerCacheFlushBit(resp)
+		}
 
 	case strings.ToLower(srv.ServicesMetaQueryName()):
 		resp.Answer = []dns.RR{DNSSDServicesPTR(srv)}
@@ -447,7 +466,9 @@ func (r *responder) handleQuestion(q dns.Question, req *Request, srv Service) *d
 	resp.Answer = remove(req.msg.Answer, resp.Answer)
 
 	resp.SetReply(req.msg)
-	resp.Question = nil
+	if !isLegacyUnicastSource(req.from) {
+		resp.Question = nil
+	}
 	resp.Response = true
 	resp.Authoritative = true
 
@@ -475,12 +496,17 @@ func services(hs []*serviceHandle) []*Service {
 	return result
 }
 
+// containsConflictingAnswers return true, if the request contains A or AAAA records
+// which deny any A or AAAA records for a service.
+//
+// 2024-08-07 (mah) Because this method ignores SRV records, it should only
+// be used to check for conlict answers for a registered service and not for probing.
+// It is the responsibility of the probed service to find conflicting SRV records
+// and resolve them during probing.
 func containsConflictingAnswers(req *Request, handle *serviceHandle) bool {
 	as := A(*handle.service, req.iface)
 	aaaas := AAAA(*handle.service, req.iface)
-	srv := SRV(*handle.service)
-
-	reqAs, reqAAAAs, reqSRVs := splitRecords(filterRecords(req.msg, req.iface, handle.service))
+	reqAs, reqAAAAs, _ := splitRecords(filterRecords(req, handle.service))
 
 	if len(reqAs) > 0 && areDenyingAs(reqAs, as) {
 		log.Debug.Printf("%v != %v\n", reqAs, as)
@@ -490,12 +516,6 @@ func containsConflictingAnswers(req *Request, handle *serviceHandle) bool {
 	if len(reqAAAAs) > 0 && areDenyingAAAAs(reqAAAAs, aaaas) {
 		log.Debug.Printf("%v != %v\n", reqAAAAs, aaaas)
 		return true
-	}
-
-	for _, reqSRV := range reqSRVs {
-		if isDenyingSRV(reqSRV, srv) {
-			return true
-		}
 	}
 
 	return false
