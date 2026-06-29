@@ -1,8 +1,18 @@
 version: '2.1'
 services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - mosquitto-data:/mosquitto/data
+
   app:
     image: kahoona/somfy-rts-gateway:latest
     network_mode: "host"
+    restart: unless-stopped
     environment:
       - BASE_PATH=/somfy
       - PORT=9070
@@ -11,7 +21,18 @@ services:
       - HOMEKIT_CONFIG_PATH=/data/homekit
       - HOMEKIT_CONFIG_PORT=40123
       - HOMEKIT_CONFIG_PIN=12344321
+      - HOMEKIT_ENABLED=true
+      - MQTT_ENABLED=true
+      - MQTT_BROKER=tcp://localhost:1883
+      - MQTT_BASE_TOPIC=covers
+      # - MQTT_USERNAME=
+      # - MQTT_PASSWORD=
     volumes:
       - /Users/bernst/Documents/Privat/somfy-rts-gateway:/data
     devices:
       - /dev/tty.usbserial-1410:/dev/ttyUSB0
+    depends_on:
+      - mosquitto
+
+volumes:
+  mosquitto-data:
