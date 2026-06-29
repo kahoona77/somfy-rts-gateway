@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
 	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -26,8 +26,13 @@ func main() {
 
 	ctx.Controller = ctrl
 
+	rootCtx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
 	if ctx.Config.HomekitEnabled {
-		homekit.StartHomeKitBridge(ctx, ctrl)
+		if err := homekit.StartHomeKitBridge(rootCtx, ctx, ctrl); err != nil {
+			logrus.Errorf("HomeKit bridge failed: %v", err)
+		}
 	}
 
 	if ctx.Config.MqttEnabled {
@@ -41,7 +46,7 @@ func main() {
 
 	e := newServer(ctx, ctrl)
 	startServer(ctx, e)
-	waitForShutdown(e)
+	waitForShutdown(rootCtx, e)
 }
 
 func initController(ctx *core.Ctx) *somfy.Controller {
@@ -82,14 +87,12 @@ func startServer(ctx *core.Ctx, e *echo.Echo) {
 	}()
 }
 
-func waitForShutdown(e *echo.Echo) {
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt)
-	<-quit
+func waitForShutdown(ctx context.Context, e *echo.Echo) {
+	<-ctx.Done()
 
-	cancelCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	if err := e.Shutdown(cancelCtx); err != nil {
+	if err := e.Shutdown(shutdownCtx); err != nil {
 		e.Logger.Fatal(err)
 	}
 }
