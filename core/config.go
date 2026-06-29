@@ -14,6 +14,15 @@ type AppConfig struct {
 	HomekitConfigPath  string
 	HomekitPort        string
 	HomekitPin         string
+	HomekitEnabled     bool
+
+	MqttEnabled         bool
+	MqttBroker          string
+	MqttUsername        string
+	MqttPassword        string
+	MqttClientId        string
+	MqttBaseTopic       string
+	MqttDiscoveryPrefix string
 }
 
 func (c *AppConfig) AbsolutePath(path string) string {
@@ -57,6 +66,33 @@ func LoadConfiguration() AppConfig {
 	conf.HomekitPin = os.Getenv("HOMEKIT_CONFIG_PIN")
 	if conf.HomekitPin == "" {
 		conf.HomekitPin = "12344321"
+	}
+
+	conf.HomekitEnabled = os.Getenv("HOMEKIT_ENABLED") != "false"
+
+	conf.MqttEnabled = os.Getenv("MQTT_ENABLED") == "true"
+
+	conf.MqttBroker = os.Getenv("MQTT_BROKER")
+	if conf.MqttBroker == "" {
+		conf.MqttBroker = "tcp://localhost:1883"
+	}
+
+	conf.MqttUsername = os.Getenv("MQTT_USERNAME")
+	conf.MqttPassword = os.Getenv("MQTT_PASSWORD")
+
+	conf.MqttClientId = os.Getenv("MQTT_CLIENT_ID")
+	if conf.MqttClientId == "" {
+		conf.MqttClientId = "somfy-rts-gateway"
+	}
+
+	conf.MqttBaseTopic = os.Getenv("MQTT_BASE_TOPIC")
+	if conf.MqttBaseTopic == "" {
+		conf.MqttBaseTopic = "covers"
+	}
+
+	conf.MqttDiscoveryPrefix = os.Getenv("MQTT_DISCOVERY_PREFIX")
+	if conf.MqttDiscoveryPrefix == "" {
+		conf.MqttDiscoveryPrefix = "homeassistant"
 	}
 
 	return conf

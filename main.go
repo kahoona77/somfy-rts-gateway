@@ -13,6 +13,7 @@ import (
 
 	"somfyRtsGateway/core"
 	"somfyRtsGateway/homekit"
+	"somfyRtsGateway/mqtt"
 	"somfyRtsGateway/somfy"
 	"somfyRtsGateway/web"
 	"somfyRtsGateway/web/views"
@@ -24,7 +25,19 @@ func main() {
 	defer ctrl.Close()
 
 	ctx.Controller = ctrl
-	homekit.StartHomeKitBridge(ctx, ctrl)
+
+	if ctx.Config.HomekitEnabled {
+		homekit.StartHomeKitBridge(ctx, ctrl)
+	}
+
+	if ctx.Config.MqttEnabled {
+		bridge := mqtt.NewBridge(ctx.Config, ctx.CommandChannel, ctrl.Devices())
+		if err := bridge.Start(); err != nil {
+			logrus.Errorf("MQTT bridge start failed: %v", err)
+		} else {
+			defer bridge.Stop()
+		}
+	}
 
 	e := newServer(ctx, ctrl)
 	startServer(ctx, e)
